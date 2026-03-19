@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gitrieve书签提取器</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Gitrieve书签提取器</h1>
+            <p class="subtitle">从书签中提取GitHub仓库并生成gitrieve配置</p>
+        </header>
+
+        <main>
+            <!-- 状态区域 -->
+            <div id="status-area" class="status-area">
+                <div id="status-message" class="status-message">准备开始提取...</div>
+                <div id="progress-bar" class="progress-bar hidden">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+            </div>
+
+            <!-- 控制按钮 -->
+            <div class="controls">
+                <button id="extract-btn" class="btn btn-primary">
+                    <span id="btn-text">提取GitHub仓库</span>
+                    <span id="btn-spinner" class="spinner hidden"></span>
+                </button>
+                <button id="options-btn" class="btn btn-secondary">选项</button>
+            </div>
+
+            <!-- 结果区域 -->
+            <div id="result-area" class="result-area hidden">
+                <div class="result-header">
+                    <h3>提取结果</h3>
+                    <div class="result-stats">
+                        <span id="result-count">0</span> 个GitHub仓库
+                    </div>
+                </div>
+
+                <!-- URL列表预览 -->
+                <div id="url-list" class="url-list">
+                    <!-- URL列表将动态填充 -->
+                </div>
+
+                <!-- 导出选项 -->
+                <div class="export-options">
+                    <h4>导出配置</h4>
+                    <div class="export-buttons">
+                        <button id="copy-yaml-btn" class="btn btn-export">
+                            复制YAML到剪贴板
+                        </button>
+                        <button id="download-yaml-btn" class="btn btn-export">
+                            下载YAML文件
+                        </button>
+                        <button id="copy-json-btn" class="btn btn-export">
+                            复制JSON到剪贴板
+                        </button>
+                        <button id="preview-config-btn" class="btn btn-export">
+                            预览配置
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 配置预览 -->
+                <div id="config-preview" class="config-preview hidden">
+                    <div class="preview-header">
+                        <h4>配置预览</h4>
+                        <button id="close-preview-btn" class="btn btn-small">关闭</button>
+                    </div>
+                    <div class="format-selector">
+                        <button class="format-btn active" data-format="yaml">YAML</button>
+                        <button class="format-btn" data-format="json">JSON</button>
+                    </div>
+                    <pre id="config-content" class="config-content"></pre>
+                </div>
+            </div>
+
+            <!-- 错误区域 -->
+            <div id="error-area" class="error-area hidden">
+                <div class="error-header">
+                    <h3>错误</h3>
+                    <button id="close-error-btn" class="btn btn-small">关闭</button>
+                </div>
+                <div id="error-message" class="error-message"></div>
+            </div>
+        </main>
+
+        <footer>
+            <p class="footer-note">
+                注意：此扩展只会读取您的书签数据，不会上传到任何服务器。
+                所有处理都在本地浏览器中进行。
+            </p>
+        </footer>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

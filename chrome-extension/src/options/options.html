@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gitrieve书签提取器 - 选项</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Gitrieve书签提取器 - 选项</h1>
+            <p class="subtitle">配置扩展设置和导出选项</p>
+        </header>
+
+        <main>
+            <!-- 配置区域 -->
+            <div class="config-section">
+                <h2>基本设置</h2>
+
+                <!-- URL过滤设置 -->
+                <div class="config-group">
+                    <h3>URL过滤设置</h3>
+                    <div class="config-item">
+                        <label>
+                            <input type="checkbox" id="filter-github" checked>
+                            只提取GitHub仓库URL
+                        </label>
+                        <p class="help-text">仅提取格式为 github.com/user/repo 的URL</p>
+                    </div>
+
+                    <div class="config-item">
+                        <label>
+                            <input type="checkbox" id="remove-fragments" checked>
+                            移除URL片段标识符（#后的内容）
+                        </label>
+                        <p class="help-text">例如：github.com/user/repo#readme → github.com/user/repo</p>
+                    </div>
+
+                    <div class="config-item">
+                        <label>
+                            <input type="checkbox" id="normalize-urls" checked>
+                            标准化URL格式
+                        </label>
+                        <p class="help-text">统一使用https协议并移除尾部斜杠</p>
+                    </div>
+                </div>
+
+                <!-- 导出设置 -->
+                <div class="config-group">
+                    <h3>导出设置</h3>
+                    <div class="config-item">
+                        <label for="default-format">默认导出格式</label>
+                        <select id="default-format">
+                            <option value="yaml">YAML</option>
+                            <option value="json">JSON</option>
+                        </select>
+                        <p class="help-text">选择复制到剪贴板时的默认格式</p>
+                    </div>
+
+                    <div class="config-item">
+                        <label for="filename-template">导出文件名模板</label>
+                        <input type="text" id="filename-template" value="gitrieve-config-{date}">
+                        <p class="help-text">
+                            可用变量：{date}（当前日期）、{time}（当前时间）、{count}（仓库数量）
+                        </p>
+                    </div>
+                </div>
+
+                <!-- gitrieve配置模板 -->
+                <div class="config-group">
+                    <h3>gitrieve配置模板</h3>
+                    <div class="config-item">
+                        <label for="cron-expression">定时任务表达式</label>
+                        <input type="text" id="cron-expression" value="0 * * * *">
+                        <p class="help-text">cron表达式，默认每小时执行一次</p>
+                    </div>
+
+                    <div class="config-item">
+                        <label for="storage-backend">存储后端</label>
+                        <select id="storage-backend">
+                            <option value="localFile">本地文件</option>
+                            <option value="s3">S3兼容存储</option>
+                        </select>
+                        <p class="help-text">选择gitrieve使用的存储后端</p>
+                    </div>
+
+                    <div class="config-item">
+                        <label>
+                            <input type="checkbox" id="download-releases" checked>
+                            下载发布包
+                        </label>
+                    </div>
+
+                    <div class="config-item">
+                        <label>
+                            <input type="checkbox" id="download-issues" checked>
+                            下载Issue
+                        </label>
+                    </div>
+
+                    <div class="config-item">
+                        <label>
+                            <input type="checkbox" id="download-wiki" checked>
+                            下载Wiki
+                        </label>
+                    </div>
+
+                    <div class="config-item">
+                        <label>
+                            <input type="checkbox" id="download-discussion" checked>
+                            下载讨论
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 全局配置选项 -->
+                <div class="config-group">
+                    <h3>全局配置选项</h3>
+                    <div class="config-item">
+                        <label for="github-token">GitHub Token</label>
+                        <input type="password" id="github-token" value="your_github_token_here">
+                        <p class="help-text">用于访问私有仓库的GitHub个人访问令牌</p>
+                    </div>
+
+                    <div class="config-item">
+                        <label for="concurrency-num">并发数</label>
+                        <input type="number" id="concurrency-num" value="6" min="1" max="20">
+                        <p class="help-text">同时处理的仓库数量</p>
+                    </div>
+
+                    <div class="config-item">
+                        <label for="release-size-limit">发布包大小限制 (bytes)</label>
+                        <input type="number" id="release-size-limit" value="300000000" min="1000000">
+                        <p class="help-text">跳过超过此大小的发布包（默认300MB）</p>
+                    </div>
+
+                    <div class="config-item">
+                        <label for="release-num-limit">发布包数量限制</label>
+                        <input type="number" id="release-num-limit" value="3" min="1" max="50">
+                        <p class="help-text">每个仓库最多下载的发布包数量</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 动作按钮 -->
+            <div class="action-buttons">
+                <button id="save-btn" class="btn btn-primary">保存设置</button>
+                <button id="reset-btn" class="btn btn-secondary">恢复默认</button>
+                <button id="test-btn" class="btn btn-secondary">测试URL匹配</button>
+            </div>
+
+            <!-- 测试区域 -->
+            <div id="test-area" class="test-area hidden">
+                <h3>URL匹配测试</h3>
+                <div class="test-input">
+                    <input type="text" id="test-url" placeholder="输入URL进行测试..." value="https://github.com/user/repo#readme">
+                    <button id="run-test-btn" class="btn btn-small">测试</button>
+                </div>
+                <div id="test-result" class="test-result">
+                    <!-- 测试结果将显示在这里 -->
+                </div>
+            </div>
+
+            <!-- 状态消息 -->
+            <div id="status-message" class="status-message hidden"></div>
+        </main>
+
+        <footer>
+            <p class="footer-note">
+                版本 1.0.0 |
+                <a href="#" id="view-docs">查看文档</a> |
+                <a href="#" id="report-issue">报告问题</a>
+            </p>
+        </footer>
+    </div>
+
+    <script src="options.js"></script>
+</body>
+</html>
