@@ -6,7 +6,6 @@
 global.chrome = {
   bookmarks: {
     getTree: (callback) => {
-      // 模拟书签数据
       const mockBookmarks = [
         {
           id: "0",
@@ -73,30 +72,13 @@ global.chrome = {
   }
 };
 
-// 导入我们的模块
-const fs = require('fs');
-const path = require('path');
-
-// 读取我们的工具模块
-const urlUtilsPath = path.join(__dirname, 'urlUtils.js');
-const configGeneratorPath = path.join(__dirname, 'configGenerator.js');
-
-// 简单的模块加载器
-function loadModule(filePath) {
-  const code = fs.readFileSync(filePath, 'utf8');
-  const module = { exports: {} };
-  eval(code);
-  return module.exports;
-}
+// 加载工具模块
+const UrlUtils = require('./urlUtils.js');
+const ConfigGenerator = require('./configGenerator.js');
 
 try {
-  // 加载模块
-  global.UrlUtils = loadModule(urlUtilsPath);
-  global.ConfigGenerator = loadModule(configGeneratorPath);
-
   console.log('=== URL处理测试 ===');
 
-  // 测试URL过滤
   const testUrls = [
     'https://github.com/user/repo',
     'http://github.com/user/repo',
@@ -110,7 +92,7 @@ try {
 
   console.log('URL过滤测试:');
   testUrls.forEach(url => {
-    const isGitHub = global.UrlUtils.isGitHubRepoUrl(url);
+    const isGitHub = UrlUtils.isGitHubRepoUrl(url);
     console.log(`  ${url} -> ${isGitHub ? '✓' : '✗'}`);
   });
 
@@ -124,8 +106,8 @@ try {
 
   console.log('URL清理结果:');
   urlsToClean.forEach(url => {
-    const cleaned = global.UrlUtils.cleanUrl(url);
-    const normalized = global.UrlUtils.normalizeGitHubUrl(url);
+    const cleaned = UrlUtils.cleanUrl(url);
+    const normalized = UrlUtils.normalizeGitHubUrl(url);
     console.log(`  原始: ${url}`);
     console.log(`  清理: ${cleaned}`);
     console.log(`  标准化: ${normalized}\n`);
@@ -133,31 +115,27 @@ try {
 
   console.log('=== 书签处理模拟测试 ===');
 
-  // 模拟处理书签
   chrome.bookmarks.getTree((bookmarkTree) => {
     console.log('书签树获取成功');
 
-    // 提取GitHub URL
-    const githubUrls = global.UrlUtils.extractGitHubUrlsFromBookmarks(bookmarkTree);
+    const githubUrls = UrlUtils.extractGitHubUrlsFromBookmarks(bookmarkTree);
     console.log(`提取到 ${githubUrls.length} 个GitHub URL:`);
     githubUrls.forEach((urlObj, index) => {
       console.log(`  ${index + 1}. ${urlObj.title}: ${urlObj.url}`);
     });
 
-    // 去重
-    const uniqueUrls = global.UrlUtils.deduplicateUrls(githubUrls);
+    const uniqueUrls = UrlUtils.deduplicateUrls(githubUrls);
     console.log(`\n去重后剩余 ${uniqueUrls.length} 个唯一URL:`);
     uniqueUrls.forEach((urlObj, index) => {
       console.log(`  ${index + 1}. ${urlObj.title}: ${urlObj.url}`);
     });
 
-    // 生成配置
     console.log('\n=== 配置生成测试 ===');
-    const yamlConfig = global.ConfigGenerator.generateYAML(uniqueUrls);
+    const yamlConfig = ConfigGenerator.generateYAML(uniqueUrls);
     console.log('生成的YAML配置:');
     console.log(yamlConfig);
 
-    const jsonConfig = global.ConfigGenerator.generateJSON(uniqueUrls);
+    const jsonConfig = ConfigGenerator.generateJSON(uniqueUrls);
     console.log('\n生成的JSON配置:');
     console.log(jsonConfig);
 

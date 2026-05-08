@@ -20,7 +20,7 @@ class UrlUtils {
    */
   static isGitHubRepoUrl(url) {
     if (!url || typeof url !== 'string') return false;
-    return this.GITHUB_REPO_REGEX.test(url);
+    return this.GITHUB_REPO_REGEX.test(this.cleanUrl(url));
   }
 
   /**

@@ -35,6 +35,10 @@ const elements = {
     downloadIssues: document.getElementById('download-issues'),
     downloadWiki: document.getElementById('download-wiki'),
     downloadDiscussion: document.getElementById('download-discussion'),
+    githubToken: document.getElementById('github-token'),
+    concurrencyNum: document.getElementById('concurrency-num'),
+    releaseSizeLimit: document.getElementById('release-size-limit'),
+    releaseNumLimit: document.getElementById('release-num-limit'),
 
     // 按钮
     saveBtn: document.getElementById('save-btn'),
@@ -127,6 +131,10 @@ async function loadSettings() {
         elements.downloadIssues.checked = settings.downloadIssues;
         elements.downloadWiki.checked = settings.downloadWiki;
         elements.downloadDiscussion.checked = settings.downloadDiscussion;
+        elements.githubToken.value = settings.githubToken;
+        elements.concurrencyNum.value = settings.concurrencyNum;
+        elements.releaseSizeLimit.value = settings.releaseSizeLimit;
+        elements.releaseNumLimit.value = settings.releaseNumLimit;
 
         console.log('设置已加载:', settings);
     } catch (error) {
@@ -151,7 +159,11 @@ async function saveSettings() {
             downloadReleases: elements.downloadReleases.checked,
             downloadIssues: elements.downloadIssues.checked,
             downloadWiki: elements.downloadWiki.checked,
-            downloadDiscussion: elements.downloadDiscussion.checked
+            downloadDiscussion: elements.downloadDiscussion.checked,
+            githubToken: elements.githubToken.value,
+            concurrencyNum: parseInt(elements.concurrencyNum.value, 10) || 6,
+            releaseSizeLimit: parseInt(elements.releaseSizeLimit.value, 10) || 300000000,
+            releaseNumLimit: parseInt(elements.releaseNumLimit.value, 10) || 3
         };
 
         await chrome.storage.sync.set(settings);
@@ -180,6 +192,10 @@ function resetSettings() {
         elements.downloadIssues.checked = DEFAULT_SETTINGS.downloadIssues;
         elements.downloadWiki.checked = DEFAULT_SETTINGS.downloadWiki;
         elements.downloadDiscussion.checked = DEFAULT_SETTINGS.downloadDiscussion;
+        elements.githubToken.value = DEFAULT_SETTINGS.githubToken;
+        elements.concurrencyNum.value = DEFAULT_SETTINGS.concurrencyNum;
+        elements.releaseSizeLimit.value = DEFAULT_SETTINGS.releaseSizeLimit;
+        elements.releaseNumLimit.value = DEFAULT_SETTINGS.releaseNumLimit;
 
         showStatusMessage('已恢复默认设置', false);
     }
@@ -218,19 +234,9 @@ function runUrlTest() {
  * 测试URL处理
  */
 function testUrlProcessing(url) {
-    const githubRepoRegex = /^https?:\/\/(www\.)?github\.com\/[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+(\/)?$/;
-
-    const isGitHub = githubRepoRegex.test(url);
-    let cleaned = url;
-    let normalized = url;
-
-    if (isGitHub) {
-        // 清理URL
-        cleaned = cleanUrl(url);
-
-        // 标准化URL
-        normalized = cleaned.replace(/^http:/, 'https:');
-    }
+    const isGitHub = UrlUtils.isGitHubRepoUrl(url);
+    const cleaned = UrlUtils.cleanUrl(url);
+    const normalized = UrlUtils.normalizeGitHubUrl(url);
 
     return {
         original: url,
@@ -238,21 +244,6 @@ function testUrlProcessing(url) {
         cleaned: cleaned,
         normalized: normalized
     };
-}
-
-/**
- * 清理URL
- */
-function cleanUrl(url) {
-    if (!url || typeof url !== 'string') return '';
-
-    // 移除#及后面的内容
-    let cleaned = url.split('#')[0];
-
-    // 移除尾部斜杠
-    cleaned = cleaned.replace(/\/$/, '');
-
-    return cleaned;
 }
 
 /**

@@ -1,1 +1,6 @@
+node_modules/
+*.crx
+*.pem
+.DS_Store
 .claude/*
+.devcontainer/devcontainer-lock.json

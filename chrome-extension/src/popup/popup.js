@@ -18,6 +18,7 @@ let currentConfig = {
     json: '',
     urls: []
 };
+let progressTimer = null;
 
 // DOM元素引用
 const elements = {
@@ -201,16 +202,21 @@ function showProgress(show) {
     elements.progressBar.classList.toggle('hidden', !show);
     if (show) {
         elements.progressFill.style.width = '0%';
-        // 模拟进度动画
         let progress = 0;
-        const interval = setInterval(() => {
+        if (progressTimer) clearInterval(progressTimer);
+        progressTimer = setInterval(() => {
             progress += 0.5;
             elements.progressFill.style.width = `${Math.min(progress, 90)}%`;
-            if (progress >= 90 || !show) {
-                clearInterval(interval);
+            if (progress >= 90) {
+                clearInterval(progressTimer);
+                progressTimer = null;
             }
         }, 50);
     } else {
+        if (progressTimer) {
+            clearInterval(progressTimer);
+            progressTimer = null;
+        }
         elements.progressFill.style.width = '100%';
         setTimeout(() => {
             elements.progressFill.style.width = '0%';
