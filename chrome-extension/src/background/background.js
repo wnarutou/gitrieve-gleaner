@@ -44,7 +44,11 @@ function dedupeUrls(urls) {
 }
 
 function sanitizeName(name) {
-  return name.replace(/[^a-zA-Z0-9\-_]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+  return name.replace(/[\x00-\x1f\x7f:{}[\],&*?|#<>!=%@`]/g, '').trim();
+}
+
+function yamlQuote(name) {
+  return /[:\s"'{}\[\],&*?|#<>!=%@`-]/.test(name) ? `"${name.replace(/"/g, '\\"')}"` : name;
 }
 
 function countBookmarks(tree) {
@@ -77,7 +81,7 @@ function generateRepoConfig(urlObj) {
 function toYAML(repos) {
   const lines = ['repository:'];
   repos.forEach(r => {
-    lines.push(`  - name: ${r.name}`, `    url: ${r.url}`, `    cron: "${r.cron}"`, '    storage:');
+    lines.push(`  - name: ${yamlQuote(r.name)}`, `    url: ${r.url}`, `    cron: "${r.cron}"`, '    storage:');
     r.storage.forEach(s => lines.push(`      - ${s}`));
     lines.push(
       `    useCache: ${r.useCache ? 'True' : 'False'}`,

@@ -68,10 +68,11 @@ class ConfigGenerator {
    * @returns {string} 清理后的名称
    */
   static sanitizeName(name) {
-    return name
-      .replace(/[^a-zA-Z0-9\-_]/g, '_') // 替换非字母数字字符为下划线
-      .replace(/_+/g, '_')              // 合并多个下划线
-      .replace(/^_+|_+$/g, '');         // 移除首尾下划线
+    return name.replace(/[\x00-\x1f\x7f:{}[\],&*?|#<>!=%@`]/g, '').trim();
+  }
+
+  static yamlQuote(name) {
+    return /[:\s"'{}[\]\],&*?|#<>!=%@`-]/.test(name) ? `"${name.replace(/"/g, '\\"')}"` : name;
   }
 
   /**
@@ -106,7 +107,7 @@ class ConfigGenerator {
     if (config.repository && config.repository.length > 0) {
       yamlLines.push('repository:');
       config.repository.forEach(repo => {
-        yamlLines.push('  - name: ' + repo.name);
+        yamlLines.push('  - name: ' + this.yamlQuote(repo.name));
         yamlLines.push('    url: ' + repo.url);
         yamlLines.push('    cron: "' + repo.cron + '"');
         yamlLines.push('    storage:');
