@@ -123,6 +123,36 @@ try {
     console.log(`  标准化: ${normalized}\n`);
   });
 
+  console.log('\n=== URL 过滤设置测试 ===');
+  const flagTests = [
+    {
+      url: 'https://github.com/user/repo#readme',
+      settings: { removeFragments: true, normalizeUrls: true },
+      isRepo: true,
+      desc: 'removeFragments=true 时带#片段识别为仓库'
+    },
+    {
+      url: 'https://github.com/user/repo#readme',
+      settings: { removeFragments: false, normalizeUrls: true },
+      isRepo: false,
+      desc: 'removeFragments=false 时带#片段不识别为仓库'
+    },
+    {
+      url: 'http://github.com/user/repo/',
+      settings: { removeFragments: true, normalizeUrls: false },
+      normalized: 'http://github.com/user/repo/',
+      desc: 'normalizeUrls=false 时保留http与尾斜杠'
+    }
+  ];
+  flagTests.forEach(t => {
+    const isRepo = UrlUtils.isGitHubRepoUrl(t.url, t.settings);
+    if (t.isRepo !== undefined) {
+      assert(isRepo === t.isRepo, t.desc);
+    } else {
+      assert(UrlUtils.normalizeGitHubUrl(t.url, t.settings) === t.normalized, t.desc);
+    }
+  });
+
   console.log('=== 书签处理模拟测试 ===');
 
   chrome.bookmarks.getTree((bookmarkTree) => {

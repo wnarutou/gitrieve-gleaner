@@ -16,45 +16,43 @@ class UrlUtils {
   /**
    * 检查URL是否为GitHub仓库URL
    * @param {string} url - 要检查的URL
+   * @param {Object} settings - 配置项
    * @returns {boolean} 是否为GitHub仓库URL
    */
-  static isGitHubRepoUrl(url) {
+  static isGitHubRepoUrl(url, settings = {}) {
     if (!url || typeof url !== 'string') return false;
-    return this.GITHUB_REPO_REGEX.test(this.cleanUrl(url));
+    return this.GITHUB_REPO_REGEX.test(this.cleanUrl(url, settings));
   }
 
   /**
    * 清理URL
-   * - 移除#片段标识符
-   * - 移除尾部斜杠
-   * - 转换为标准格式
+   * - 移除#片段标识符（removeFragments，默认开启）
+   * - 移除尾部斜杠 / http→https 标准化（normalizeUrls，默认开启）
    * @param {string} url - 要清理的URL
+   * @param {Object} settings - 配置项
    * @returns {string} 清理后的URL
    */
-  static cleanUrl(url) {
+  static cleanUrl(url, settings = {}) {
     if (!url || typeof url !== 'string') return '';
 
-    // 移除#及后面的内容
-    let cleaned = url.split('#')[0];
-
-    // 移除尾部斜杠
-    cleaned = cleaned.replace(/\/$/, '');
-
-    // 确保使用https协议
-    cleaned = cleaned.replace(/^http:/, 'https:');
-
+    let cleaned = url;
+    if (settings.removeFragments !== false) cleaned = cleaned.split('#')[0];
+    if (settings.normalizeUrls !== false) {
+      cleaned = cleaned.replace(/\/$/, '').replace(/^http:/, 'https:');
+    }
     return cleaned;
   }
 
   /**
    * 从GitHub URL提取用户和仓库信息
    * @param {string} url - GitHub仓库URL
+   * @param {Object} settings - 配置项
    * @returns {object|null} 包含owner和repo的对象，或null（如果不是GitHub URL）
    */
-  static extractRepoInfo(url) {
-    if (!this.isGitHubRepoUrl(url)) return null;
+  static extractRepoInfo(url, settings = {}) {
+    if (!this.isGitHubRepoUrl(url, settings)) return null;
 
-    const cleaned = this.cleanUrl(url);
+    const cleaned = this.cleanUrl(url, settings);
     const parts = cleaned.split('/');
 
     // URL格式：https://github.com/owner/repo
@@ -71,13 +69,18 @@ class UrlUtils {
    * 标准化GitHub URL
    * 确保所有GitHub URL使用相同的格式
    * @param {string} url - 原始URL
+   * @param {Object} settings - 配置项
    * @returns {string} 标准化后的URL
    */
-  static normalizeGitHubUrl(url) {
-    if (!this.isGitHubRepoUrl(url)) return url;
+  static normalizeGitHubUrl(url, settings = {}) {
+    if (!this.isGitHubRepoUrl(url, settings)) return url;
 
-    const cleaned = this.cleanUrl(url);
-    const info = this.extractRepoInfo(cleaned);
+    const cleaned = this.cleanUrl(url, settings);
+
+    // normalizeUrls=false 时保留 http 协议与尾斜杠，不做标准化
+    if (settings.normalizeUrls === false) return cleaned;
+
+    const info = this.extractRepoInfo(cleaned, settings);
 
     if (!info) return cleaned;
 
@@ -87,9 +90,10 @@ class UrlUtils {
   /**
    * 从书签节点中提取所有GitHub仓库URL
    * @param {Array} bookmarkNodes - 书签节点数组
+   * @param {Object} settings - 配置项
    * @returns {Array} GitHub仓库URL数组
    */
-  static extractGitHubUrlsFromBookmarks(bookmarkNodes) {
+  static extractGitHubUrlsFromBookmarks(bookmarkNodes, settings = {}) {
     const githubUrls = [];
 
     /**
@@ -101,8 +105,8 @@ class UrlUtils {
 
       for (const node of nodes) {
         // 如果有URL且是GitHub仓库URL
-        if (node.url && UrlUtils.isGitHubRepoUrl(node.url)) {
-          const normalizedUrl = UrlUtils.normalizeGitHubUrl(node.url);
+        if (node.url && UrlUtils.isGitHubRepoUrl(node.url, settings)) {
+          const normalizedUrl = UrlUtils.normalizeGitHubUrl(node.url, settings);
           githubUrls.push({
             url: normalizedUrl,
             title: node.title || '',
