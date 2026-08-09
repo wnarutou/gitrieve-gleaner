@@ -1,0 +1,33 @@
+name: Publish Chrome Extension
+
+on:
+  push:
+    tags:
+      - "v*"          # 打 v* tag 触发发布
+  workflow_dispatch:  # 也支持手动触发
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 打包扩展
+        run: |
+          cd chrome-extension
+          zip -r ../extension.zip . \
+            -x "node_modules/*" \
+            -x "src/utils/test.js"
+
+      - name: 上传并发布到 Chrome Web Store
+        uses: wdzeng/chrome-extension@v2
+        with:
+          extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
+          publisher-id: ${{ secrets.CHROME_PUBLISHER_ID }}
+          zip-path: extension.zip
+          client-id: ${{ secrets.CHROME_CLIENT_ID }}
+          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
