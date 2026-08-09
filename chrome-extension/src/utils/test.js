@@ -228,3 +228,50 @@ try {
 } catch (error) {
   console.error('测试过程中出现错误:', error);
 }
+
+console.log('\n=== background.js 冒烟测试 ===');
+
+// 模拟 chrome API，捕获 message 处理器
+let backgroundHandler = null;
+global.chrome = {
+  bookmarks: {
+    getTree: (cb) => cb([
+      { id: '0', title: '', children: [
+        { id: '1', title: 'Vue', url: 'https://github.com/vuejs/vue' }
+      ] }
+    ])
+  },
+  storage: {
+    sync: {
+      get: (defaults) => Promise.resolve({
+        ...defaults,
+        server: { ...defaults.server, port: '9000', authEnabled: true }
+      })
+    }
+  },
+  runtime: {
+    lastError: null,
+    onMessage: { addListener: (fn) => { backgroundHandler = fn; } },
+    onInstalled: { addListener: () => {} }
+  }
+};
+
+require('../background/background.js');
+
+backgroundHandler({ action: 'processBookmarks' }, {}, (resp) => {
+  assert(resp && resp.success, 'background processBookmarks 成功');
+  assert(resp.data.yaml.includes('server:'), 'background YAML 包含 server:');
+  assert(resp.data.yaml.includes('  port: "9000"'), 'background 读取 storage 中的 server.port');
+  assert(resp.data.yaml.includes('  authEnabled: true'), 'background server.authEnabled 输出');
+  assert(resp.data.yaml.includes('cron: "0 * * * *"'), 'background 默认 cron');
+  assert(resp.data.json.includes('"server"'), 'background JSON 包含 server 段');
+  assert(!resp.data.yaml.includes('undefined'), 'background YAML 无 undefined');
+
+  // 冒烟断言在异步回调内执行，退出码需在此设置
+  if (failed.length > 0) {
+    console.error('\n共 ' + failed.length + ' 项断言失败');
+    process.exitCode = 1;
+  } else {
+    console.log('\nbackground 冒烟测试断言通过');
+  }
+});

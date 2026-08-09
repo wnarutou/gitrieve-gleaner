@@ -4,33 +4,60 @@
 
 const GITHUB_REPO_RE = /^https?:\/\/(www\.)?github\.com\/[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+(\/)?$/;
 
-function cleanUrl(url) {
+// 与 src/options/options.js 和 src/utils/configGenerator.js 的 DEFAULT_SETTINGS 保持一致
+const DEFAULT_SETTINGS = {
+  filterGithub: true,
+  removeFragments: true,
+  normalizeUrls: true,
+  defaultFormat: 'yaml',
+  filenameTemplate: 'gitrieve-config-{date}',
+  cronExpression: '0 * * * *',
+  storageBackend: 'localFile',
+  s3Endpoint: '',
+  s3Region: '',
+  s3Bucket: '',
+  s3AccessKeyID: '',
+  s3SecretAccessKey: '',
+  downloadReleases: true,
+  downloadIssues: true,
+  downloadWiki: true,
+  downloadDiscussion: true,
+  githubToken: 'your_github_token_here',
+  concurrencyNum: 6,
+  releaseSizeLimit: 300000000,
+  releaseNumLimit: 3,
+  server: { host: '0.0.0.0', port: '8080', dbPath: '/app/data/gitrieve.db', authEnabled: false, authToken: '' }
+};
+
+function cleanUrl(url, settings = {}) {
   if (!url || typeof url !== 'string') return '';
-  let c = url.split('#')[0].replace(/\/$/, '');
-  return c.replace(/^http:/, 'https:');
+  let c = url;
+  if (settings.removeFragments !== false) c = c.split('#')[0];
+  if (settings.normalizeUrls !== false) c = c.replace(/\/$/, '').replace(/^http:/, 'https:');
+  return c;
 }
 
-function isGitHubRepoUrl(url) {
+function isGitHubRepoUrl(url, settings = {}) {
   if (!url || typeof url !== 'string') return false;
-  return GITHUB_REPO_RE.test(cleanUrl(url));
+  return GITHUB_REPO_RE.test(cleanUrl(url, settings));
 }
 
-function normalizeGitHubUrl(url) {
-  if (!isGitHubRepoUrl(url)) return url;
-  const cleaned = cleanUrl(url);
+function normalizeGitHubUrl(url, settings = {}) {
+  if (!isGitHubRepoUrl(url, settings)) return url;
+  const cleaned = cleanUrl(url, settings);
   const parts = cleaned.split('/');
   const idx = parts.findIndex(p => p.includes('github.com'));
   if (idx === -1 || idx + 2 >= parts.length) return cleaned;
   return `https://github.com/${parts[idx + 1]}/${parts[idx + 2]}`;
 }
 
-function extractGitHubUrls(bookmarkNodes) {
+function extractGitHubUrls(bookmarkNodes, settings = {}) {
   const urls = [];
   (function walk(nodes) {
     if (!nodes || !Array.isArray(nodes)) return;
     for (const node of nodes) {
-      if (node.url && isGitHubRepoUrl(node.url)) {
-        urls.push({ url: normalizeGitHubUrl(node.url), title: node.title || '', originalUrl: node.url });
+      if (node.url && isGitHubRepoUrl(node.url, settings)) {
+        urls.push({ url: normalizeGitHubUrl(node.url, settings), title: node.title || '', originalUrl: node.url });
       }
       if (node.children) walk(node.children);
     }
@@ -58,29 +85,57 @@ function countBookmarks(tree) {
   return n;
 }
 
-function generateRepoConfig(urlObj) {
+function generateRepoConfig(urlObj, settings = {}) {
   const parts = urlObj.url.split('/');
   const idx = parts.findIndex(p => p.includes('github.com'));
   const owner = parts[idx + 1];
   const repo = parts[idx + 2];
+  const backend = settings.storageBackend || 'localFile';
   return {
     name: sanitizeName(urlObj.title || repo),
     url: `github.com/${owner}/${repo}`,
-    cron: '0 * * * *',
-    storage: ['localFile'],
+    cron: settings.cronExpression || '0 * * * *',
+    storage: [backend],
     useCache: true,
     allBranches: true,
     depth: 0,
-    downloadReleases: true,
-    downloadIssues: true,
-    downloadWiki: true,
-    downloadDiscussion: true
+    downloadReleases: settings.downloadReleases !== false,
+    downloadIssues: settings.downloadIssues !== false,
+    downloadWiki: settings.downloadWiki !== false,
+    downloadDiscussion: settings.downloadDiscussion !== false
   };
 }
 
-function toYAML(repos) {
+function buildStorage(settings) {
+  if (settings.storageBackend === 's3') {
+    return [{
+      name: 's3',
+      type: 's3',
+      endpoint: settings.s3Endpoint,
+      region: settings.s3Region,
+      bucket: settings.s3Bucket,
+      accessKeyID: settings.s3AccessKeyID,
+      secretAccessKey: settings.s3SecretAccessKey
+    }];
+  }
+  return [{ name: 'localFile', type: 'file', path: './repo' }];
+}
+
+function buildConfig(repos, settings) {
+  return {
+    repository: repos,
+    storage: buildStorage(settings),
+    githubToken: settings.githubToken,
+    cocurrencyNum: settings.concurrencyNum,
+    releaseSizeLimit: settings.releaseSizeLimit,
+    releaseNumLimit: settings.releaseNumLimit,
+    server: { ...settings.server }
+  };
+}
+
+function toYAML(config) {
   const lines = ['repository:'];
-  repos.forEach(r => {
+  config.repository.forEach(r => {
     lines.push(`  - name: ${yamlQuote(r.name)}`, `    url: ${r.url}`, `    cron: "${r.cron}"`, '    storage:');
     r.storage.forEach(s => lines.push(`      - ${s}`));
     lines.push(
@@ -94,44 +149,61 @@ function toYAML(repos) {
       ''
     );
   });
+  config.storage.forEach(s => {
+    lines.push('storage:', `  - name: ${s.name}`, `    type: ${s.type}`);
+    if (s.path) lines.push(`    path: ${s.path}`);
+    if (s.endpoint) lines.push(`    endpoint: ${s.endpoint}`);
+    if (s.region) lines.push(`    region: ${s.region}`);
+    if (s.bucket) lines.push(`    bucket: ${s.bucket}`);
+    if (s.accessKeyID) lines.push(`    accessKeyID: ${s.accessKeyID}`);
+    if (s.secretAccessKey) lines.push(`    secretAccessKey: ${s.secretAccessKey}`);
+    lines.push('');
+  });
   lines.push(
-    'storage:', '  - name: localFile', '    type: file', '    path: ./repo', '',
-    'githubToken: your_github_token_here', 'cocurrencyNum: 6',
-    'releaseSizeLimit: 300000000', 'releaseNumLimit: 3'
+    `githubToken: ${config.githubToken}`,
+    `cocurrencyNum: ${config.cocurrencyNum}`,
+    `releaseSizeLimit: ${config.releaseSizeLimit}`,
+    `releaseNumLimit: ${config.releaseNumLimit}`,
+    'server:',
+    `  host: ${config.server.host}`,
+    `  port: "${config.server.port}"`,
+    `  dbPath: ${config.server.dbPath}`,
+    `  authEnabled: ${config.server.authEnabled ? 'true' : 'false'}`,
+    `  authToken: "${String(config.server.authToken).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
   );
   return lines.join('\n');
 }
 
-async function processBookmarks() {
+function getBookmarkTree() {
   return new Promise((resolve, reject) => {
     chrome.bookmarks.getTree((tree) => {
       if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
-      try {
-        const urls = extractGitHubUrls(tree);
-        const unique = dedupeUrls(urls);
-        const repos = unique.map(generateRepoConfig);
-        resolve({
-          success: true,
-          data: {
-            yaml: toYAML(repos),
-            json: JSON.stringify({
-              repository: repos,
-              storage: [{ name: 'localFile', type: 'file', path: './repo' }],
-              githubToken: 'your_github_token_here',
-              cocurrencyNum: 6,
-              releaseSizeLimit: 300000000,
-              releaseNumLimit: 3
-            }, null, 2),
-            urls: unique,
-            stats: { totalBookmarks: countBookmarks(tree), githubUrlsFound: urls.length, uniqueUrls: unique.length }
-          },
-          message: `成功提取 ${unique.length} 个GitHub仓库`
-        });
-      } catch (e) {
-        reject(e);
-      }
+      resolve(tree);
     });
   });
+}
+
+async function processBookmarks() {
+  try {
+    const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+    settings.server = { ...DEFAULT_SETTINGS.server, ...(settings.server || {}) };
+    const tree = await getBookmarkTree();
+    const urls = extractGitHubUrls(tree, settings);
+    const unique = dedupeUrls(urls);
+    const config = buildConfig(unique.map(u => generateRepoConfig(u, settings)), settings);
+    return {
+      success: true,
+      data: {
+        yaml: toYAML(config),
+        json: JSON.stringify(config, null, 2),
+        urls: unique,
+        stats: { totalBookmarks: countBookmarks(tree), githubUrlsFound: urls.length, uniqueUrls: unique.length }
+      },
+      message: `成功提取 ${unique.length} 个GitHub仓库`
+    };
+  } catch (e) {
+    return { success: false, error: e.message, message: `处理失败: ${e.message}` };
+  }
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
