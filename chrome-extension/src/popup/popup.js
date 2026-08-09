@@ -290,11 +290,36 @@ async function copyToClipboard(format) {
 }
 
 /**
+ * 获取显示设置
+ */
+async function getDisplaySettings() {
+    return chrome.storage.sync.get({
+        defaultFormat: 'yaml',
+        filenameTemplate: 'gitrieve-config-{date}'
+    });
+}
+
+/**
+ * 格式化下载文件名
+ */
+function formatFilename(template, count, ext) {
+    const now = new Date();
+    const date = now.toISOString().slice(0, 10);
+    const time = now.toISOString().slice(11, 19).replace(/:/g, '');
+    return template
+        .replace('{date}', date)
+        .replace('{time}', time)
+        .replace('{count}', count) + '.' + ext;
+}
+
+/**
  * 下载配置文件
  */
-function downloadConfig(format) {
+async function downloadConfig(format) {
     const config = format === 'yaml' ? currentConfig.yaml : currentConfig.json;
-    const filename = `gitrieve-config.${format === 'yaml' ? 'yaml' : 'json'}`;
+    const ext = format === 'yaml' ? 'yaml' : 'json';
+    const settings = await getDisplaySettings();
+    const filename = formatFilename(settings.filenameTemplate, currentConfig.urls.length, ext);
 
     const blob = new Blob([config], { type: format === 'yaml' ? 'text/yaml' : 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -313,8 +338,9 @@ function downloadConfig(format) {
 /**
  * 显示配置预览
  */
-function showConfigPreview() {
-    switchConfigFormat('yaml');
+async function showConfigPreview() {
+    const settings = await getDisplaySettings();
+    switchConfigFormat(settings.defaultFormat === 'json' ? 'json' : 'yaml');
     elements.configPreview.classList.remove('hidden');
 }
 
