@@ -73,13 +73,14 @@ server: {                        // 新增，对齐官方示例
 }
 ```
 
-`server` 段 YAML 按官方示例逐字输出（`port` 带引号、`authEnabled: false` 小写）；仓库条目布尔保持现有 `True/False` 风格（gitrieve 官方示例自身即混用两种风格，无需统一）。
+`server` 段 YAML 按官方示例逐字输出（`port` 始终带引号输出，即使输入为数字；`authEnabled: false` 小写）；仓库条目布尔保持现有 `True/False` 风格（gitrieve 官方示例自身即混用两种风格，无需统一）。
 
 ### 2. 配置生成
 
 **`src/utils/configGenerator.js`**：
 - `DEFAULT_CONFIG` 增加 `server` 段。
 - `generateFullConfig(urls, settings)`：仓库条目 cron/storage/下载开关取自 settings；storage 段按后端生成（localFile 或 s3 全字段）；全局字段与 server 取自 settings。
+  - storage 后端名称固定为后端值本身：`localFile` 或 `s3`。仓库条目的 `storage:` 列表引用该名称（如 `storage: [s3]`），storage 段定义 `name: s3, type: s3, ...`。
 - `toYAML` 末尾追加 `server:` 段；JSON 路径自动包含（同一配置对象）。
 
 **`src/background/background.js`**：
