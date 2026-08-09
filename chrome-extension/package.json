@@ -1,6 +1,6 @@
 {
   "name": "gitrieve-bookmark-extractor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Chrome extension to extract GitHub repositories from bookmarks and generate gitrieve configuration",
   "main": "src/background/background.js",
   "scripts": {
