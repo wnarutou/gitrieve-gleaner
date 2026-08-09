@@ -166,8 +166,9 @@ function toYAML(config) {
       ''
     );
   });
+  lines.push('storage:');
   config.storage.forEach(s => {
-    lines.push('storage:', `  - name: ${yamlQuote(s.name)}`, `    type: ${s.type}`);
+    lines.push(`  - name: ${yamlQuote(s.name)}`, `    type: ${s.type}`);
     if (s.path) lines.push(`    path: ${s.path}`);
     if (s.endpoint) lines.push(`    endpoint: ${s.endpoint}`);
     if (s.region) lines.push(`    region: ${s.region}`);

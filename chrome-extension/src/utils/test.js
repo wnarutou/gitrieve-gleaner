@@ -282,6 +282,7 @@ backgroundHandler({ action: 'processBookmarks' }, {}, (resp) => {
   assert(resp.data.yaml.includes('cron: "0 * * * *"'), 'background 默认 cron');
   assert(resp.data.yaml.includes('    storage:\n      - "archive-local"\n      - "public-s3"'), 'background 仓库条目引用全部目的地');
   assert(resp.data.yaml.includes('  - name: "public-s3"'), 'background storage 段包含 s3 目的地');
+  assert((resp.data.yaml.match(/^storage:/gm) || []).length === 1, 'background YAML 仅一个 storage: 头');
   assert(resp.data.json.includes('"server"'), 'background JSON 包含 server 段');
   assert(!resp.data.yaml.includes('undefined'), 'background YAML 无 undefined');
 
