@@ -183,12 +183,18 @@ try {
 
     const customSettings = {
       cronExpression: '0 6 * * *',
-      storageBackend: 's3',
-      s3Endpoint: 's3.example.com',
-      s3Region: 'us-east-1',
-      s3Bucket: 'my-bucket',
-      s3AccessKeyID: 'AKIAEXAMPLE',
-      s3SecretAccessKey: 'secret-key',
+      storageDestinations: [
+        { name: 'archive-local', type: 'file', path: '/data/repos' },
+        {
+          name: 'public-s3',
+          type: 's3',
+          endpoint: 's3.example.com',
+          region: 'us-east-1',
+          bucket: 'my-bucket',
+          accessKeyID: 'AKIAEXAMPLE',
+          secretAccessKey: 'secret-key'
+        }
+      ],
       downloadReleases: false,
       server: { host: '127.0.0.1', port: '9000', dbPath: 'gitrieve.db', authEnabled: true, authToken: 'tok"en' }
     };
@@ -200,10 +206,14 @@ try {
     assert(yamlCustom.includes('  authEnabled: true'), 'YAML server.authEnabled 小写 true');
     assert(yamlCustom.includes('  authToken: "tok\\"en"'), 'YAML server.authToken 引号转义');
     assert(yamlCustom.includes('cron: "0 6 * * *"'), '自定义 cron 生效');
-    assert(yamlCustom.includes('    storage:\n      - s3'), '仓库条目引用 s3 后端');
-    assert(yamlCustom.includes('  - name: s3'), 'storage 段包含 s3 条目');
+    assert(yamlCustom.includes('    storage:\n      - "archive-local"\n      - "public-s3"'), '仓库条目引用全部目的地');
+    assert(yamlCustom.includes('  - name: "archive-local"'), 'storage 段包含本地目的地');
+    assert(yamlCustom.includes('    type: file'), 'storage 段 file 类型');
+    assert(yamlCustom.includes('    path: /data/repos'), '本地路径生效');
+    assert(yamlCustom.includes('  - name: "public-s3"'), 'storage 段包含 s3 目的地');
     assert(yamlCustom.includes('    type: s3'), 'storage 段 s3 类型');
     assert(yamlCustom.includes('    endpoint: s3.example.com'), 'storage 段 endpoint');
+    assert(yamlCustom.includes('    bucket: my-bucket'), 'storage 段 bucket');
     assert(yamlCustom.includes('downloadReleases: False'), 'downloadReleases=false 生效');
 
     const jsonCustom = ConfigGenerator.generateJSON(uniqueUrls, customSettings);
@@ -214,6 +224,8 @@ try {
     assert(yamlDefault.includes('server:'), '默认配置也包含 server: 段');
     assert(yamlDefault.includes('  host: 0.0.0.0'), '默认 server.host 为 0.0.0.0');
     assert(yamlDefault.includes('  port: "8080"'), '默认 server.port 为 "8080"');
+    assert(yamlDefault.includes('  - name: localFile'), '默认 storage 段含本地目的地');
+    assert(yamlDefault.includes('    path: ./repo'), '默认本地路径 ./repo');
 
     if (failed.length > 0) {
       console.error('\n共 ' + failed.length + ' 项断言失败');

@@ -42,12 +42,18 @@ class ConfigGenerator {
       defaultFormat: 'yaml',
       filenameTemplate: 'gitrieve-config-{date}',
       cronExpression: '0 * * * *',
-      storageBackend: 'localFile',
-      s3Endpoint: '',
-      s3Region: '',
-      s3Bucket: '',
-      s3AccessKeyID: '',
-      s3SecretAccessKey: '',
+      storageDestinations: [
+        {
+          name: 'localFile',
+          type: 'file',
+          path: './repo',
+          endpoint: '',
+          region: '',
+          bucket: '',
+          accessKeyID: '',
+          secretAccessKey: ''
+        }
+      ],
       downloadReleases: true,
       downloadIssues: true,
       downloadWiki: true,
@@ -64,6 +70,18 @@ class ConfigGenerator {
         authToken: ''
       }
     };
+  }
+
+  /**
+   * 从设置中解析存储目的地列表，缺失/为空/畸形时回退默认
+   * @param {Array} destinations - 设置中的 storageDestinations
+   * @returns {Array} 标准化后的目的地列表
+   */
+  static resolveDestinations(destinations) {
+    const valid = Array.isArray(destinations)
+      ? destinations.filter(d => d && typeof d.name === 'string' && d.name.trim() && typeof d.type === 'string')
+      : [];
+    return valid.length > 0 ? valid : [{ name: 'localFile', type: 'file', path: './repo' }];
   }
 
   /**
@@ -84,13 +102,13 @@ class ConfigGenerator {
     const owner = urlParts[domainIndex + 1];
     const repo = urlParts[domainIndex + 2];
     const name = title && title.trim() ? this.sanitizeName(title) : repo;
-    const backend = settings.storageBackend || 'localFile';
+    const destinations = this.resolveDestinations(settings.storageDestinations);
 
     return {
       name: name,
       url: `github.com/${owner}/${repo}`,
       cron: settings.cronExpression || '0 * * * *',
-      storage: [backend],
+      storage: destinations.map(d => d.name),
       useCache: true,
       allBranches: true,
       depth: 0,
@@ -128,17 +146,20 @@ class ConfigGenerator {
       repository: githubUrls.map(urlObj =>
         this.generateRepoConfig(urlObj.url, urlObj.title, merged)
       ),
-      storage: merged.storageBackend === 's3'
-        ? [{
-            name: 's3',
-            type: 's3',
-            endpoint: merged.s3Endpoint,
-            region: merged.s3Region,
-            bucket: merged.s3Bucket,
-            accessKeyID: merged.s3AccessKeyID,
-            secretAccessKey: merged.s3SecretAccessKey
-          }]
-        : [{ name: 'localFile', type: 'file', path: './repo' }],
+      storage: this.resolveDestinations(merged.storageDestinations).map(d => {
+        const base = { name: d.name, type: d.type };
+        if (d.type === 's3') {
+          return {
+            ...base,
+            endpoint: d.endpoint || '',
+            region: d.region || '',
+            bucket: d.bucket || '',
+            accessKeyID: d.accessKeyID || '',
+            secretAccessKey: d.secretAccessKey || ''
+          };
+        }
+        return { ...base, path: d.path || './repo' };
+      }),
       githubToken: merged.githubToken,
       cocurrencyNum: merged.concurrencyNum,
       releaseSizeLimit: merged.releaseSizeLimit,
@@ -166,7 +187,7 @@ class ConfigGenerator {
         yamlLines.push('    cron: "' + repo.cron + '"');
         yamlLines.push('    storage:');
         repo.storage.forEach(storage => {
-          yamlLines.push('      - ' + storage);
+          yamlLines.push('      - ' + this.yamlQuote(storage));
         });
         yamlLines.push('    useCache: ' + (repo.useCache ? 'True' : 'False'));
         yamlLines.push('    allBranches: ' + (repo.allBranches ? 'True' : 'False'));
@@ -183,7 +204,7 @@ class ConfigGenerator {
     if (config.storage && config.storage.length > 0) {
       yamlLines.push('storage:');
       config.storage.forEach(storage => {
-        yamlLines.push('  - name: ' + storage.name);
+        yamlLines.push('  - name: ' + this.yamlQuote(storage.name));
         yamlLines.push('    type: ' + storage.type);
         if (storage.path) {
           yamlLines.push('    path: ' + storage.path);
