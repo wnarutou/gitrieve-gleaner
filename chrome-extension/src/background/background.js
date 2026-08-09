@@ -45,6 +45,8 @@ function isGitHubRepoUrl(url, settings = {}) {
 function normalizeGitHubUrl(url, settings = {}) {
   if (!isGitHubRepoUrl(url, settings)) return url;
   const cleaned = cleanUrl(url, settings);
+  // normalizeUrls=false 时保留 http 协议与尾斜杠，不做标准化
+  if (settings.normalizeUrls === false) return cleaned;
   const parts = cleaned.split('/');
   const idx = parts.findIndex(p => p.includes('github.com'));
   if (idx === -1 || idx + 2 >= parts.length) return cleaned;

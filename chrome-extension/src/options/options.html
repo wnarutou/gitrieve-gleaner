@@ -106,6 +106,7 @@
                         <div class="config-item">
                             <label for="s3-secret-key">Secret Access Key</label>
                             <input type="password" id="s3-secret-key">
+                            <p class="help-text">此密钥通过 chrome.storage.sync 同步至 Google 账号，并会嵌入导出的配置中</p>
                         </div>
                     </div>
 
@@ -144,7 +145,7 @@
                     <div class="config-item">
                         <label for="github-token">GitHub Token</label>
                         <input type="password" id="github-token" value="your_github_token_here">
-                        <p class="help-text">用于访问私有仓库的GitHub个人访问令牌</p>
+                        <p class="help-text">用于访问私有仓库的GitHub个人访问令牌；此令牌通过 chrome.storage.sync 同步至 Google 账号，并会嵌入导出的配置中</p>
                     </div>
 
                     <div class="config-item">
@@ -193,6 +194,7 @@
                     <div class="config-item">
                         <label for="server-authtoken">认证 Token (authToken)</label>
                         <input type="password" id="server-authtoken" value="">
+                        <p class="help-text">此令牌通过 chrome.storage.sync 同步至 Google 账号，并会嵌入导出的配置中</p>
                     </div>
                 </div>
             </div>
