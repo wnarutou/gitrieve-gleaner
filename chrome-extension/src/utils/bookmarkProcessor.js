@@ -32,17 +32,20 @@ class BookmarkProcessor {
       const bookmarkTree = await this.getAllBookmarks();
       console.log('书签树获取成功，开始处理...');
 
-      // 2. 提取GitHub URL（使用UrlUtils模块）
-      const githubUrls = UrlUtils.extractGitHubUrlsFromBookmarks(bookmarkTree);
+      // 2. 读取选项页已保存的设置（未设置项在生成器内部使用默认值）
+      const stored = await chrome.storage.sync.get(null);
+
+      // 3. 提取GitHub URL（使用UrlUtils模块，透传 URL 过滤设置）
+      const githubUrls = UrlUtils.extractGitHubUrlsFromBookmarks(bookmarkTree, stored);
       console.log(`找到 ${githubUrls.length} 个GitHub仓库URL`);
 
-      // 3. 去重
+      // 4. 去重
       const uniqueUrls = UrlUtils.deduplicateUrls(githubUrls);
       console.log(`去重后剩余 ${uniqueUrls.length} 个唯一URL`);
 
-      // 4. 生成配置
-      const yamlConfig = ConfigGenerator.generateYAML(uniqueUrls);
-      const jsonConfig = ConfigGenerator.generateJSON(uniqueUrls);
+      // 5. 生成配置（透传设置）
+      const yamlConfig = ConfigGenerator.generateYAML(uniqueUrls, stored);
+      const jsonConfig = ConfigGenerator.generateJSON(uniqueUrls, stored);
 
       return {
         success: true,

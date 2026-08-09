@@ -1,6 +1,6 @@
 # Gitrieve Gleaner
 
-一个 Chrome 扩展程序，用于从浏览器书签中提取 GitHub 仓库链接，并将其转换为 [gitrieve](https://github.com/gitrieve/gitrieve) 配置格式。
+一个 Chrome 扩展程序，用于从浏览器书签中提取 GitHub 仓库链接，并将其转换为 [gitrieve](https://github.com/wnarutou/gitrieve) 配置格式。
 
 ## 项目概述
 
@@ -180,7 +180,7 @@ gitrieve-gleaner/
 
 ## 相关项目
 
-- [gitrieve](https://github.com/gitrieve/gitrieve)：Git 仓库检索和分析工具
+- [gitrieve](https://github.com/wnarutou/gitrieve)：Git 仓库检索和分析工具
 - [Chrome Extensions API](https://developer.chrome.com/docs/extensions/)：官方扩展开发文档
 
 ---
