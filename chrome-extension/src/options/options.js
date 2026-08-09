@@ -11,12 +11,18 @@ const DEFAULT_SETTINGS = {
     defaultFormat: 'yaml',
     filenameTemplate: 'gitrieve-config-{date}',
     cronExpression: '0 * * * *',
-    storageBackend: 'localFile',
-    s3Endpoint: '',
-    s3Region: '',
-    s3Bucket: '',
-    s3AccessKeyID: '',
-    s3SecretAccessKey: '',
+    storageDestinations: [
+        {
+            name: 'localFile',
+            type: 'file',
+            path: './repo',
+            endpoint: '',
+            region: '',
+            bucket: '',
+            accessKeyID: '',
+            secretAccessKey: ''
+        }
+    ],
     downloadReleases: true,
     downloadIssues: true,
     downloadWiki: true,
@@ -43,13 +49,8 @@ const elements = {
     defaultFormat: document.getElementById('default-format'),
     filenameTemplate: document.getElementById('filename-template'),
     cronExpression: document.getElementById('cron-expression'),
-    storageBackend: document.getElementById('storage-backend'),
-    s3Fields: document.getElementById('s3-fields'),
-    s3Endpoint: document.getElementById('s3-endpoint'),
-    s3Region: document.getElementById('s3-region'),
-    s3Bucket: document.getElementById('s3-bucket'),
-    s3AccessKeyID: document.getElementById('s3-access-key'),
-    s3SecretAccessKey: document.getElementById('s3-secret-key'),
+    storageDestinations: document.getElementById('storage-destinations'),
+    addDestinationBtn: document.getElementById('add-destination-btn'),
     downloadReleases: document.getElementById('download-releases'),
     downloadIssues: document.getElementById('download-issues'),
     downloadWiki: document.getElementById('download-wiki'),
@@ -83,6 +84,12 @@ const elements = {
     reportIssue: document.getElementById('report-issue')
 };
 
+// 当前正在编辑的目的地列表（渲染期间的数据源）
+let destinationState = [];
+
+// 旧扁平存储字段（一次性迁移用）
+const LEGACY_STORAGE_KEYS = ['storageBackend', 's3Endpoint', 's3Region', 's3Bucket', 's3AccessKeyID', 's3SecretAccessKey'];
+
 /**
  * 初始化选项页面
  */
@@ -109,8 +116,12 @@ function bindEvents() {
     // 恢复默认
     elements.resetBtn.addEventListener('click', resetSettings);
 
-    // 存储后端切换时显示/隐藏 s3 字段
-    elements.storageBackend.addEventListener('change', updateS3FieldsVisibility);
+    // 添加存储目的地
+    elements.addDestinationBtn.addEventListener('click', () => {
+        destinationState = collectDestinations();
+        destinationState.push({ name: '', type: 'file', path: './repo', endpoint: '', region: '', bucket: '', accessKeyID: '', secretAccessKey: '' });
+        renderDestinations();
+    });
 
     // 测试按钮
     elements.testBtn.addEventListener('click', toggleTestArea);
@@ -140,10 +151,225 @@ function bindEvents() {
 }
 
 /**
- * 存储后端切换时显示/隐藏 s3 字段
+ * 从设置中解析目的地列表，缺失/为空/畸形时回退默认
  */
-function updateS3FieldsVisibility() {
-    elements.s3Fields.classList.toggle('hidden', elements.storageBackend.value !== 's3');
+function resolveDestinations(destinations) {
+    const valid = Array.isArray(destinations)
+        ? destinations.filter(d => d && typeof d.name === 'string' && typeof d.type === 'string')
+        : [];
+    return valid.length > 0 ? valid : [{ name: 'localFile', type: 'file', path: './repo' }];
+}
+
+/**
+ * 将旧扁平存储字段迁移为 storageDestinations 数组
+ */
+function migrateLegacyStorage(settings) {
+    if (settings.storageBackend === 's3') {
+        return [{
+            name: 's3',
+            type: 's3',
+            endpoint: settings.s3Endpoint || '',
+            region: settings.s3Region || '',
+            bucket: settings.s3Bucket || '',
+            accessKeyID: settings.s3AccessKeyID || '',
+            secretAccessKey: settings.s3SecretAccessKey || ''
+        }];
+    }
+    return [{ name: 'localFile', type: 'file', path: './repo' }];
+}
+
+/**
+ * 渲染存储目的地卡片列表
+ */
+function renderDestinations() {
+    const container = elements.storageDestinations;
+    container.innerHTML = '';
+    const list = resolveDestinations(destinationState);
+    destinationState = list;
+    list.forEach((dest, index) => {
+        container.appendChild(buildDestinationCard(dest, index, list.length));
+    });
+}
+
+/**
+ * 构建单个目的地卡片 DOM
+ */
+function buildDestinationCard(dest, index, total) {
+    const card = document.createElement('div');
+    card.className = 'dest-card';
+    card.dataset.index = index;
+
+    // 第一行：名称 + 类型 + 删除按钮
+    const row = document.createElement('div');
+    row.className = 'dest-card-row';
+
+    const nameItem = document.createElement('div');
+    nameItem.className = 'config-item';
+    const nameLabel = document.createElement('label');
+    nameLabel.htmlFor = `dest-name-${index}`;
+    nameLabel.textContent = '名称';
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.id = `dest-name-${index}`;
+    nameInput.value = dest.name || '';
+    nameInput.placeholder = '如 archive-local';
+    nameItem.appendChild(nameLabel);
+    nameItem.appendChild(nameInput);
+    row.appendChild(nameItem);
+
+    const typeItem = document.createElement('div');
+    typeItem.className = 'config-item';
+    const typeLabel = document.createElement('label');
+    typeLabel.htmlFor = `dest-type-${index}`;
+    typeLabel.textContent = '类型';
+    const typeSelect = document.createElement('select');
+    typeSelect.id = `dest-type-${index}`;
+    const optFile = document.createElement('option');
+    optFile.value = 'file';
+    optFile.textContent = '本地文件';
+    const optS3 = document.createElement('option');
+    optS3.value = 's3';
+    optS3.textContent = 'S3兼容存储';
+    typeSelect.appendChild(optFile);
+    typeSelect.appendChild(optS3);
+    typeSelect.value = dest.type === 's3' ? 's3' : 'file';
+    typeSelect.addEventListener('change', () => {
+        destinationState = collectDestinations();
+        destinationState[index].type = typeSelect.value;
+        renderDestinations();
+    });
+    typeItem.appendChild(typeLabel);
+    typeItem.appendChild(typeSelect);
+    row.appendChild(typeItem);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'btn btn-secondary btn-small dest-remove-btn';
+    removeBtn.textContent = '删除';
+    removeBtn.disabled = total <= 1;
+    removeBtn.addEventListener('click', () => {
+        destinationState = collectDestinations();
+        if (destinationState.length <= 1) return;
+        destinationState.splice(index, 1);
+        renderDestinations();
+    });
+    row.appendChild(removeBtn);
+
+    card.appendChild(row);
+
+    // 类型专属字段
+    if (typeSelect.value === 's3') {
+        card.appendChild(buildTextField(`dest-endpoint-${index}`, 'Endpoint', dest.endpoint || '', 'S3 兼容存储 endpoint（如 s3.us-west-000.backblazeb2.com）'));
+        card.appendChild(buildTextField(`dest-region-${index}`, 'Region', dest.region || ''));
+        card.appendChild(buildTextField(`dest-bucket-${index}`, 'Bucket', dest.bucket || ''));
+        card.appendChild(buildTextField(`dest-access-key-${index}`, 'Access Key ID', dest.accessKeyID || ''));
+        card.appendChild(buildPasswordField(`dest-secret-key-${index}`, 'Secret Access Key', dest.secretAccessKey || '', '此密钥通过 chrome.storage.sync 同步，并会嵌入导出的配置中'));
+    } else {
+        card.appendChild(buildTextField(`dest-path-${index}`, '路径', dest.path || './repo', '本地归档目录路径'));
+    }
+
+    return card;
+}
+
+/**
+ * 构建文本输入项
+ */
+function buildTextField(id, labelText, value, help) {
+    const item = document.createElement('div');
+    item.className = 'config-item';
+    const label = document.createElement('label');
+    label.htmlFor = id;
+    label.textContent = labelText;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = id;
+    input.value = value;
+    item.appendChild(label);
+    item.appendChild(input);
+    if (help) {
+        const helpEl = document.createElement('p');
+        helpEl.className = 'help-text';
+        helpEl.textContent = help;
+        item.appendChild(helpEl);
+    }
+    return item;
+}
+
+/**
+ * 构建密码输入项
+ */
+function buildPasswordField(id, labelText, value, help) {
+    const item = document.createElement('div');
+    item.className = 'config-item';
+    const label = document.createElement('label');
+    label.htmlFor = id;
+    label.textContent = labelText;
+    const input = document.createElement('input');
+    input.type = 'password';
+    input.id = id;
+    input.value = value;
+    item.appendChild(label);
+    item.appendChild(input);
+    if (help) {
+        const helpEl = document.createElement('p');
+        helpEl.className = 'help-text';
+        helpEl.textContent = help;
+        item.appendChild(helpEl);
+    }
+    return item;
+}
+
+/**
+ * 从 DOM 卡片收集目的地列表
+ */
+function collectDestinations() {
+    const cards = elements.storageDestinations.querySelectorAll('.dest-card');
+    const list = [];
+    cards.forEach((card, index) => {
+        const name = card.querySelector(`#dest-name-${index}`).value.trim();
+        const type = card.querySelector(`#dest-type-${index}`).value;
+        const dest = { name, type, path: './repo', endpoint: '', region: '', bucket: '', accessKeyID: '', secretAccessKey: '' };
+        if (type === 's3') {
+            dest.endpoint = card.querySelector(`#dest-endpoint-${index}`).value.trim();
+            dest.region = card.querySelector(`#dest-region-${index}`).value.trim();
+            dest.bucket = card.querySelector(`#dest-bucket-${index}`).value.trim();
+            dest.accessKeyID = card.querySelector(`#dest-access-key-${index}`).value.trim();
+            dest.secretAccessKey = card.querySelector(`#dest-secret-key-${index}`).value.trim();
+        } else {
+            dest.path = card.querySelector(`#dest-path-${index}`).value.trim();
+        }
+        list.push(dest);
+    });
+    return list;
+}
+
+/**
+ * 校验目的地列表，返回错误消息数组（空数组=通过）
+ */
+function validateDestinations(list) {
+    const errors = [];
+    if (list.length === 0) {
+        errors.push('至少需要一个存储目的地');
+        return errors;
+    }
+    const names = new Set();
+    list.forEach((d, i) => {
+        const label = `目的地 ${i + 1}`;
+        if (!d.name) {
+            errors.push(`${label}：名称必填`);
+        } else if (names.has(d.name)) {
+            errors.push(`${label}：名称「${d.name}」重复，名称需唯一`);
+        } else {
+            names.add(d.name);
+        }
+        if (d.type === 's3') {
+            if (!d.endpoint) errors.push(`${label}（${d.name || '未命名'}）：Endpoint 必填`);
+            if (!d.bucket) errors.push(`${label}（${d.name || '未命名'}）：Bucket 必填`);
+        } else if (d.type === 'file' && !d.path) {
+            errors.push(`${label}（${d.name || '未命名'}）：路径必填`);
+        }
+    });
+    return errors;
 }
 
 /**
@@ -160,12 +386,15 @@ async function loadSettings() {
         elements.defaultFormat.value = settings.defaultFormat;
         elements.filenameTemplate.value = settings.filenameTemplate;
         elements.cronExpression.value = settings.cronExpression;
-        elements.storageBackend.value = settings.storageBackend;
-        elements.s3Endpoint.value = settings.s3Endpoint;
-        elements.s3Region.value = settings.s3Region;
-        elements.s3Bucket.value = settings.s3Bucket;
-        elements.s3AccessKeyID.value = settings.s3AccessKeyID;
-        elements.s3SecretAccessKey.value = settings.s3SecretAccessKey;
+        // 存储目的地：迁移旧扁平字段或读取数组
+        if (settings.storageBackend !== undefined) {
+            destinationState = migrateLegacyStorage(settings);
+            await chrome.storage.sync.set({ storageDestinations: destinationState });
+            await chrome.storage.sync.remove(LEGACY_STORAGE_KEYS);
+        } else {
+            destinationState = resolveDestinations(settings.storageDestinations);
+        }
+        renderDestinations();
         elements.downloadReleases.checked = settings.downloadReleases;
         elements.downloadIssues.checked = settings.downloadIssues;
         elements.downloadWiki.checked = settings.downloadWiki;
@@ -179,7 +408,6 @@ async function loadSettings() {
         elements.serverDbPath.value = settings.server.dbPath;
         elements.serverAuthEnabled.checked = settings.server.authEnabled;
         elements.serverAuthToken.value = settings.server.authToken;
-        updateS3FieldsVisibility();
 
         console.log('设置已加载:', settings);
     } catch (error) {
@@ -193,6 +421,13 @@ async function loadSettings() {
  */
 async function saveSettings() {
     try {
+        const destinations = collectDestinations();
+        const validationErrors = validateDestinations(destinations);
+        if (validationErrors.length > 0) {
+            showStatusMessage('存储目的地配置有误：' + validationErrors.join('；'), true);
+            return;
+        }
+
         const settings = {
             filterGithub: elements.filterGithub.checked,
             removeFragments: elements.removeFragments.checked,
@@ -200,12 +435,7 @@ async function saveSettings() {
             defaultFormat: elements.defaultFormat.value,
             filenameTemplate: elements.filenameTemplate.value,
             cronExpression: elements.cronExpression.value,
-            storageBackend: elements.storageBackend.value,
-            s3Endpoint: elements.s3Endpoint.value,
-            s3Region: elements.s3Region.value,
-            s3Bucket: elements.s3Bucket.value,
-            s3AccessKeyID: elements.s3AccessKeyID.value,
-            s3SecretAccessKey: elements.s3SecretAccessKey.value,
+            storageDestinations: destinations,
             downloadReleases: elements.downloadReleases.checked,
             downloadIssues: elements.downloadIssues.checked,
             downloadWiki: elements.downloadWiki.checked,
@@ -244,12 +474,8 @@ function resetSettings() {
         elements.defaultFormat.value = DEFAULT_SETTINGS.defaultFormat;
         elements.filenameTemplate.value = DEFAULT_SETTINGS.filenameTemplate;
         elements.cronExpression.value = DEFAULT_SETTINGS.cronExpression;
-        elements.storageBackend.value = DEFAULT_SETTINGS.storageBackend;
-        elements.s3Endpoint.value = DEFAULT_SETTINGS.s3Endpoint;
-        elements.s3Region.value = DEFAULT_SETTINGS.s3Region;
-        elements.s3Bucket.value = DEFAULT_SETTINGS.s3Bucket;
-        elements.s3AccessKeyID.value = DEFAULT_SETTINGS.s3AccessKeyID;
-        elements.s3SecretAccessKey.value = DEFAULT_SETTINGS.s3SecretAccessKey;
+        destinationState = DEFAULT_SETTINGS.storageDestinations.map(d => ({ ...d }));
+        renderDestinations();
         elements.downloadReleases.checked = DEFAULT_SETTINGS.downloadReleases;
         elements.downloadIssues.checked = DEFAULT_SETTINGS.downloadIssues;
         elements.downloadWiki.checked = DEFAULT_SETTINGS.downloadWiki;
@@ -263,7 +489,6 @@ function resetSettings() {
         elements.serverDbPath.value = DEFAULT_SETTINGS.server.dbPath;
         elements.serverAuthEnabled.checked = DEFAULT_SETTINGS.server.authEnabled;
         elements.serverAuthToken.value = DEFAULT_SETTINGS.server.authToken;
-        updateS3FieldsVisibility();
 
         showStatusMessage('已恢复默认设置', false);
     }

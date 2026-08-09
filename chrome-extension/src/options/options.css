@@ -317,3 +317,33 @@ footer {
 ::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
 }
+
+/* 存储目的地卡片 */
+.dest-card {
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background-color: white;
+}
+
+.dest-card-row {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: flex-end;
+    margin-bottom: var(--spacing-sm);
+}
+
+.dest-card-row .config-item {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.dest-card-row .config-item input[type="text"],
+.dest-card-row .config-item select {
+    width: 100%;
+}
+
+.dest-remove-btn {
+    flex-shrink: 0;
+}

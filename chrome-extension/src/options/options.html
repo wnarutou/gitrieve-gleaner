@@ -77,37 +77,10 @@
                     </div>
 
                     <div class="config-item">
-                        <label for="storage-backend">存储后端</label>
-                        <select id="storage-backend">
-                            <option value="localFile">本地文件</option>
-                            <option value="s3">S3兼容存储</option>
-                        </select>
-                        <p class="help-text">选择gitrieve使用的存储后端</p>
-                    </div>
-
-                    <div id="s3-fields" class="hidden">
-                        <div class="config-item">
-                            <label for="s3-endpoint">Endpoint</label>
-                            <input type="text" id="s3-endpoint" placeholder="如 s3.us-west-000.backblazeb2.com">
-                            <p class="help-text">S3 兼容存储的 endpoint（Backblaze B2 等）</p>
-                        </div>
-                        <div class="config-item">
-                            <label for="s3-region">Region</label>
-                            <input type="text" id="s3-region" placeholder="如 us-west-000">
-                        </div>
-                        <div class="config-item">
-                            <label for="s3-bucket">Bucket</label>
-                            <input type="text" id="s3-bucket">
-                        </div>
-                        <div class="config-item">
-                            <label for="s3-access-key">Access Key ID</label>
-                            <input type="text" id="s3-access-key">
-                        </div>
-                        <div class="config-item">
-                            <label for="s3-secret-key">Secret Access Key</label>
-                            <input type="password" id="s3-secret-key">
-                            <p class="help-text">此密钥通过 chrome.storage.sync 同步至 Google 账号，并会嵌入导出的配置中</p>
-                        </div>
+                        <label>存储目的地</label>
+                        <p class="help-text">gitrieve 会将数据归档到以下目的地，每个仓库条目引用全部目的地。名称必填且唯一，导出后作为配置中的 name 字段。</p>
+                        <div id="storage-destinations"></div>
+                        <button type="button" id="add-destination-btn" class="btn btn-secondary btn-small">＋ 添加目的地</button>
                     </div>
 
                     <div class="config-item">
