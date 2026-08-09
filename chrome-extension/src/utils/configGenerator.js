@@ -20,7 +20,49 @@ class ConfigGenerator {
       githubToken: 'your_github_token_here',
       cocurrencyNum: 6,
       releaseSizeLimit: 300000000,
-      releaseNumLimit: 3
+      releaseNumLimit: 3,
+      server: {
+        host: '0.0.0.0',
+        port: '8080',
+        dbPath: '/app/data/gitrieve.db',
+        authEnabled: false,
+        authToken: ''
+      }
+    };
+  }
+
+  /**
+   * 默认设置模型（与 options.js / background.js 的 DEFAULT_SETTINGS 保持一致）
+   */
+  static get DEFAULT_SETTINGS() {
+    return {
+      filterGithub: true,
+      removeFragments: true,
+      normalizeUrls: true,
+      defaultFormat: 'yaml',
+      filenameTemplate: 'gitrieve-config-{date}',
+      cronExpression: '0 * * * *',
+      storageBackend: 'localFile',
+      s3Endpoint: '',
+      s3Region: '',
+      s3Bucket: '',
+      s3AccessKeyID: '',
+      s3SecretAccessKey: '',
+      downloadReleases: true,
+      downloadIssues: true,
+      downloadWiki: true,
+      downloadDiscussion: true,
+      githubToken: 'your_github_token_here',
+      concurrencyNum: 6,
+      releaseSizeLimit: 300000000,
+      releaseNumLimit: 3,
+      server: {
+        host: '0.0.0.0',
+        port: '8080',
+        dbPath: '/app/data/gitrieve.db',
+        authEnabled: false,
+        authToken: ''
+      }
     };
   }
 
@@ -28,10 +70,10 @@ class ConfigGenerator {
    * 从GitHub URL生成单个仓库配置
    * @param {string} url - GitHub仓库URL
    * @param {string} title - 书签标题（可选）
+   * @param {object} settings - 设置模型对象
    * @returns {object} 仓库配置对象
    */
-  static generateRepoConfig(url, title = '') {
-    // 从URL提取owner和repo
+  static generateRepoConfig(url, title = '', settings = {}) {
     const urlParts = url.split('/');
     const domainIndex = urlParts.findIndex(part => part.includes('github.com'));
 
@@ -41,24 +83,21 @@ class ConfigGenerator {
 
     const owner = urlParts[domainIndex + 1];
     const repo = urlParts[domainIndex + 2];
-
-    // 使用标题或仓库名作为name
-    const name = title && title.trim() ?
-      this.sanitizeName(title) :
-      repo;
+    const name = title && title.trim() ? this.sanitizeName(title) : repo;
+    const backend = settings.storageBackend || 'localFile';
 
     return {
       name: name,
       url: `github.com/${owner}/${repo}`,
-      cron: '0 * * * *', // 每小时执行一次
-      storage: ['localFile'],
+      cron: settings.cronExpression || '0 * * * *',
+      storage: [backend],
       useCache: true,
       allBranches: true,
       depth: 0,
-      downloadReleases: true,
-      downloadIssues: true,
-      downloadWiki: true,
-      downloadDiscussion: true
+      downloadReleases: settings.downloadReleases !== false,
+      downloadIssues: settings.downloadIssues !== false,
+      downloadWiki: settings.downloadWiki !== false,
+      downloadDiscussion: settings.downloadDiscussion !== false
     };
   }
 
@@ -78,19 +117,34 @@ class ConfigGenerator {
   /**
    * 生成完整的gitrieve配置
    * @param {Array} githubUrls - GitHub URL对象数组，包含url和title属性
-   * @param {object} options - 配置选项
+   * @param {object} settings - 设置模型对象
    * @returns {object} 完整的配置对象
    */
-  static generateFullConfig(githubUrls, options = {}) {
-    const config = { ...this.DEFAULT_CONFIG };
+  static generateFullConfig(githubUrls, settings = {}) {
+    const merged = { ...this.DEFAULT_SETTINGS, ...settings };
+    merged.server = { ...this.DEFAULT_SETTINGS.server, ...(settings.server || {}) };
 
-    // 合并用户选项
-    Object.assign(config, options);
-
-    // 生成仓库配置
-    config.repository = githubUrls.map(urlObj =>
-      this.generateRepoConfig(urlObj.url, urlObj.title)
-    );
+    const config = {
+      repository: githubUrls.map(urlObj =>
+        this.generateRepoConfig(urlObj.url, urlObj.title, merged)
+      ),
+      storage: merged.storageBackend === 's3'
+        ? [{
+            name: 's3',
+            type: 's3',
+            endpoint: merged.s3Endpoint,
+            region: merged.s3Region,
+            bucket: merged.s3Bucket,
+            accessKeyID: merged.s3AccessKeyID,
+            secretAccessKey: merged.s3SecretAccessKey
+          }]
+        : [{ name: 'localFile', type: 'file', path: './repo' }],
+      githubToken: merged.githubToken,
+      cocurrencyNum: merged.concurrencyNum,
+      releaseSizeLimit: merged.releaseSizeLimit,
+      releaseNumLimit: merged.releaseNumLimit,
+      server: { ...merged.server }
+    };
 
     return config;
   }
@@ -158,6 +212,15 @@ class ConfigGenerator {
     yamlLines.push('cocurrencyNum: ' + config.cocurrencyNum);
     yamlLines.push('releaseSizeLimit: ' + config.releaseSizeLimit);
     yamlLines.push('releaseNumLimit: ' + config.releaseNumLimit);
+
+    // 添加server配置
+    const server = config.server || this.DEFAULT_CONFIG.server;
+    yamlLines.push('server:');
+    yamlLines.push('  host: ' + server.host);
+    yamlLines.push('  port: "' + server.port + '"');
+    yamlLines.push('  dbPath: ' + server.dbPath);
+    yamlLines.push('  authEnabled: ' + (server.authEnabled ? 'true' : 'false'));
+    yamlLines.push('  authToken: "' + String(server.authToken).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"');
 
     return yamlLines.join('\n');
   }

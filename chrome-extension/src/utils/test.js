@@ -76,6 +76,16 @@ global.chrome = {
 const UrlUtils = require('./urlUtils.js');
 const ConfigGenerator = require('./configGenerator.js');
 
+const failed = [];
+function assert(condition, message) {
+  if (condition) {
+    console.log('  PASS: ' + message);
+  } else {
+    failed.push(message);
+    console.error('  FAIL: ' + message);
+  }
+}
+
 try {
   console.log('=== URL处理测试 ===');
 
@@ -138,6 +148,49 @@ try {
     const jsonConfig = ConfigGenerator.generateJSON(uniqueUrls);
     console.log('\n生成的JSON配置:');
     console.log(jsonConfig);
+
+    console.log('\n=== 配置生成断言（server 段 / s3 / 自定义设置）===');
+
+    const customSettings = {
+      cronExpression: '0 6 * * *',
+      storageBackend: 's3',
+      s3Endpoint: 's3.example.com',
+      s3Region: 'us-east-1',
+      s3Bucket: 'my-bucket',
+      s3AccessKeyID: 'AKIAEXAMPLE',
+      s3SecretAccessKey: 'secret-key',
+      downloadReleases: false,
+      server: { host: '127.0.0.1', port: '9000', dbPath: 'gitrieve.db', authEnabled: true, authToken: 'tok"en' }
+    };
+
+    const yamlCustom = ConfigGenerator.generateYAML(uniqueUrls, customSettings);
+    assert(yamlCustom.includes('server:'), 'YAML 包含 server: 段');
+    assert(yamlCustom.includes('  host: 127.0.0.1'), 'YAML server.host 生效');
+    assert(yamlCustom.includes('  port: "9000"'), 'YAML server.port 带引号');
+    assert(yamlCustom.includes('  authEnabled: true'), 'YAML server.authEnabled 小写 true');
+    assert(yamlCustom.includes('  authToken: "tok\\"en"'), 'YAML server.authToken 引号转义');
+    assert(yamlCustom.includes('cron: "0 6 * * *"'), '自定义 cron 生效');
+    assert(yamlCustom.includes('    storage:\n      - s3'), '仓库条目引用 s3 后端');
+    assert(yamlCustom.includes('  - name: s3'), 'storage 段包含 s3 条目');
+    assert(yamlCustom.includes('    type: s3'), 'storage 段 s3 类型');
+    assert(yamlCustom.includes('    endpoint: s3.example.com'), 'storage 段 endpoint');
+    assert(yamlCustom.includes('downloadReleases: False'), 'downloadReleases=false 生效');
+
+    const jsonCustom = ConfigGenerator.generateJSON(uniqueUrls, customSettings);
+    assert(jsonCustom.includes('"server"'), 'JSON 包含 server 段');
+    assert(jsonCustom.includes('"cocurrencyNum": 6'), 'JSON 输出键为 cocurrencyNum');
+
+    const yamlDefault = ConfigGenerator.generateYAML(uniqueUrls);
+    assert(yamlDefault.includes('server:'), '默认配置也包含 server: 段');
+    assert(yamlDefault.includes('  host: 0.0.0.0'), '默认 server.host 为 0.0.0.0');
+    assert(yamlDefault.includes('  port: "8080"'), '默认 server.port 为 "8080"');
+
+    if (failed.length > 0) {
+      console.error('\n共 ' + failed.length + ' 项断言失败');
+      process.exitCode = 1;
+    } else {
+      console.log('\n全部配置生成断言通过');
+    }
 
     console.log('\n=== 测试完成 ===');
   });
