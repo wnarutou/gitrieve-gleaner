@@ -79,7 +79,7 @@ class ConfigGenerator {
    */
   static resolveDestinations(destinations) {
     const valid = Array.isArray(destinations)
-      ? destinations.filter(d => d && typeof d.name === 'string' && d.name.trim() && typeof d.type === 'string')
+      ? destinations.filter(d => d && typeof d.name === 'string' && d.name.trim() && (d.type === 'file' || d.type === 's3'))
       : [];
     return valid.length > 0 ? valid : [{ name: 'localFile', type: 'file', path: './repo' }];
   }

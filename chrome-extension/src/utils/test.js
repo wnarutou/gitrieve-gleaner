@@ -206,6 +206,7 @@ try {
     assert(yamlCustom.includes('  authEnabled: true'), 'YAML server.authEnabled 小写 true');
     assert(yamlCustom.includes('  authToken: "tok\\"en"'), 'YAML server.authToken 引号转义');
     assert(yamlCustom.includes('cron: "0 6 * * *"'), '自定义 cron 生效');
+    // 目的地名称含连字符（archive-local/public-s3），yamlQuote 会为其加引号
     assert(yamlCustom.includes('    storage:\n      - "archive-local"\n      - "public-s3"'), '仓库条目引用全部目的地');
     assert(yamlCustom.includes('  - name: "archive-local"'), 'storage 段包含本地目的地');
     assert(yamlCustom.includes('    type: file'), 'storage 段 file 类型');

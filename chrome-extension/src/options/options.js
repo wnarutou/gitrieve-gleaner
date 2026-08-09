@@ -154,8 +154,9 @@ function bindEvents() {
  * 从设置中解析目的地列表，缺失/为空/畸形时回退默认
  */
 function resolveDestinations(destinations) {
+    // UI 变体故意不检查 name.trim()：编辑中的空名称卡片需保留以便继续填写
     const valid = Array.isArray(destinations)
-        ? destinations.filter(d => d && typeof d.name === 'string' && typeof d.type === 'string')
+        ? destinations.filter(d => d && typeof d.name === 'string' && (d.type === 'file' || d.type === 's3'))
         : [];
     return valid.length > 0 ? valid : [{ name: 'localFile', type: 'file', path: './repo' }];
 }
@@ -197,7 +198,6 @@ function renderDestinations() {
 function buildDestinationCard(dest, index, total) {
     const card = document.createElement('div');
     card.className = 'dest-card';
-    card.dataset.index = index;
 
     // 第一行：名称 + 类型 + 删除按钮
     const row = document.createElement('div');
@@ -328,17 +328,20 @@ function collectDestinations() {
     cards.forEach((card, index) => {
         const name = card.querySelector(`#dest-name-${index}`).value.trim();
         const type = card.querySelector(`#dest-type-${index}`).value;
-        const dest = { name, type, path: './repo', endpoint: '', region: '', bucket: '', accessKeyID: '', secretAccessKey: '' };
-        if (type === 's3') {
-            dest.endpoint = card.querySelector(`#dest-endpoint-${index}`).value.trim();
-            dest.region = card.querySelector(`#dest-region-${index}`).value.trim();
-            dest.bucket = card.querySelector(`#dest-bucket-${index}`).value.trim();
-            dest.accessKeyID = card.querySelector(`#dest-access-key-${index}`).value.trim();
-            dest.secretAccessKey = card.querySelector(`#dest-secret-key-${index}`).value.trim();
-        } else {
-            dest.path = card.querySelector(`#dest-path-${index}`).value.trim();
-        }
-        list.push(dest);
+        const read = (id, def = '') => {
+            const el = card.querySelector(id);
+            return el ? el.value.trim() : def;
+        };
+        list.push({
+            name,
+            type,
+            path: read(`#dest-path-${index}`, './repo'),
+            endpoint: read(`#dest-endpoint-${index}`),
+            region: read(`#dest-region-${index}`),
+            bucket: read(`#dest-bucket-${index}`),
+            accessKeyID: read(`#dest-access-key-${index}`),
+            secretAccessKey: read(`#dest-secret-key-${index}`)
+        });
     });
     return list;
 }
@@ -387,7 +390,7 @@ async function loadSettings() {
         elements.filenameTemplate.value = settings.filenameTemplate;
         elements.cronExpression.value = settings.cronExpression;
         // 存储目的地：迁移旧扁平字段或读取数组
-        if (settings.storageBackend !== undefined) {
+        if (settings.storageBackend !== undefined && settings.storageDestinations === undefined) {
             destinationState = migrateLegacyStorage(settings);
             await chrome.storage.sync.set({ storageDestinations: destinationState });
             await chrome.storage.sync.remove(LEGACY_STORAGE_KEYS);
