@@ -226,7 +226,7 @@ try {
     assert(yamlDefault.includes('  host: 0.0.0.0'), '默认 server.host 为 0.0.0.0');
     assert(yamlDefault.includes('  port: "8080"'), '默认 server.port 为 "8080"');
     assert(yamlDefault.includes('  - name: localFile'), '默认 storage 段含本地目的地');
-    assert(yamlDefault.includes('    path: ./repo'), '默认本地路径 ./repo');
+    assert(yamlDefault.includes('    path: /app/repo'), '默认本地路径 /app/repo');
     const yamlFallback = ConfigGenerator.generateYAML(uniqueUrls, { storageDestinations: [] });
     assert(yamlFallback.includes('  - name: localFile'), 'storageDestinations 为空时回退默认本地目的地');
 

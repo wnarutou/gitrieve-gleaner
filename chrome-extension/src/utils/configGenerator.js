@@ -14,7 +14,7 @@ class ConfigGenerator {
         {
           name: 'localFile',
           type: 'file',
-          path: './repo'
+          path: '/app/repo'
         }
       ],
       githubToken: 'your_github_token_here',
@@ -46,7 +46,7 @@ class ConfigGenerator {
         {
           name: 'localFile',
           type: 'file',
-          path: './repo',
+          path: '/app/repo',
           endpoint: '',
           region: '',
           bucket: '',
@@ -81,7 +81,7 @@ class ConfigGenerator {
     const valid = Array.isArray(destinations)
       ? destinations.filter(d => d && typeof d.name === 'string' && d.name.trim() && (d.type === 'file' || d.type === 's3'))
       : [];
-    return valid.length > 0 ? valid : [{ name: 'localFile', type: 'file', path: './repo' }];
+    return valid.length > 0 ? valid : [{ name: 'localFile', type: 'file', path: '/app/repo' }];
   }
 
   /**
@@ -158,7 +158,7 @@ class ConfigGenerator {
             secretAccessKey: d.secretAccessKey || ''
           };
         }
-        return { ...base, path: d.path || './repo' };
+        return { ...base, path: d.path || '/app/repo' };
       }),
       githubToken: merged.githubToken,
       cocurrencyNum: merged.concurrencyNum,

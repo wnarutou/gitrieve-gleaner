@@ -11,7 +11,7 @@ gitrieve 的配置支持多个存储目的地（`storage:` 数组），且每个
 storage:
   - name: localFile
     type: file
-    path: ./repo
+    path: /app/repo
   - name: s3
     type: s3
     endpoint: ...
@@ -28,7 +28,7 @@ repository:
 当前选项页只允许选择一个存储后端，存在三个问题：
 
 1. 只能选一个存储目的地，无法配置多个。
-2. 选择本地文件时，没有填写本地路径的地方（路径被硬编码为 `./repo`）。
+2. 选择本地文件时，没有填写本地路径的地方（路径被硬编码为 `/app/repo`）。
 3. 选择 S3 时，信息字段是扁平单组、与单个后端选择绑定，无法按目的地独立配置。
 
 ## 决策（经用户确认）
@@ -36,7 +36,7 @@ repository:
 - **多个目的地应用到所有仓库**：选项页配置一份目的地列表，导出时每个仓库条目的 `storage:` 都引用全部目的地。
 - **目的地名称用户自定义**：每个目的地提供「名称」输入框，作为配置中的 `name` 字段，仓库条目按名称引用；要求必填且唯一。
 - **布局：目的地卡片列表**：一个「存储目的地」区，每个目的地一张卡片（名称 + 类型 + 类型专属字段），可任意增删，通过 JS 渲染。
-- **默认值**：默认单个本地文件目的地 `{name:'localFile', type:'file', path:'./repo'}`，保持现有行为不变。
+- **默认值**：默认单个本地文件目的地 `{name:'localFile', type:'file', path:'/app/repo'}`，保持现有行为不变。
 - **迁移**：`loadSettings` 时若旧扁平字段存在且无 `storageDestinations`，自动转换为数组后写回。
 
 ## 设计
@@ -52,7 +52,7 @@ storageDestinations: [
   {
     name: 'localFile',   // 用户自定义，必填、唯一
     type: 'file',        // 'file' | 's3'
-    path: './repo',      // type=file 时必填
+    path: '/app/repo',      // type=file 时必填
     endpoint: '',        // 以下仅 type=s3 时使用
     region: '',
     bucket: '',
@@ -69,7 +69,7 @@ storageDestinations: [
 
 **迁移逻辑**（`options.js` 的 `loadSettings`）：
 - 存储中有旧扁平字段、且无 `storageDestinations` 时：
-  - 旧 `storageBackend='localFile'` → `[{name:'localFile', type:'file', path:'./repo'}]`
+  - 旧 `storageBackend='localFile'` → `[{name:'localFile', type:'file', path:'/app/repo'}]`
   - 旧 `storageBackend='s3'` → `[{name:'s3', type:'s3', endpoint, region, bucket, accessKeyID, secretAccessKey}]`（取自旧字段）
   - 写回 `storageDestinations` 后 `storage.remove()` 移除旧扁平字段。
 - 迁移仅在选项页触发。若升级后用户尚未打开选项页，background/configGenerator 读取时 `storageDestinations` 缺失 → 回退默认本地目的地；打开选项页一次即完成迁移。
@@ -107,7 +107,7 @@ storageDestinations: [
 
 **`src/utils/configGenerator.js` 与 `src/background/background.js`**（两处同步改，输出必须一致）：
 
-- `buildStorage(settings)`：`settings.storageDestinations` 缺失或为空时回退 `[{name:'localFile', type:'file', path:'./repo'}]`；否则逐条映射：
+- `buildStorage(settings)`：`settings.storageDestinations` 缺失或为空时回退 `[{name:'localFile', type:'file', path:'/app/repo'}]`；否则逐条映射：
   - file → `{name, type:'file', path}`
   - s3 → `{name, type:'s3', endpoint, region, bucket, accessKeyID, secretAccessKey}`
 - 仓库条目 `storage:` = `settings.storageDestinations.map(d => d.name)`（含回退时取回退列表的 name）。

@@ -15,7 +15,7 @@ const DEFAULT_SETTINGS = {
         {
             name: 'localFile',
             type: 'file',
-            path: './repo',
+            path: '/app/repo',
             endpoint: '',
             region: '',
             bucket: '',
@@ -119,7 +119,7 @@ function bindEvents() {
     // 添加存储目的地
     elements.addDestinationBtn.addEventListener('click', () => {
         destinationState = collectDestinations();
-        destinationState.push({ name: '', type: 'file', path: './repo', endpoint: '', region: '', bucket: '', accessKeyID: '', secretAccessKey: '' });
+        destinationState.push({ name: '', type: 'file', path: '/app/repo', endpoint: '', region: '', bucket: '', accessKeyID: '', secretAccessKey: '' });
         renderDestinations();
     });
 
@@ -158,7 +158,7 @@ function resolveDestinations(destinations) {
     const valid = Array.isArray(destinations)
         ? destinations.filter(d => d && typeof d.name === 'string' && (d.type === 'file' || d.type === 's3'))
         : [];
-    return valid.length > 0 ? valid : [{ name: 'localFile', type: 'file', path: './repo' }];
+    return valid.length > 0 ? valid : [{ name: 'localFile', type: 'file', path: '/app/repo' }];
 }
 
 /**
@@ -176,7 +176,7 @@ function migrateLegacyStorage(settings) {
             secretAccessKey: settings.s3SecretAccessKey || ''
         }];
     }
-    return [{ name: 'localFile', type: 'file', path: './repo' }];
+    return [{ name: 'localFile', type: 'file', path: '/app/repo' }];
 }
 
 /**
@@ -265,7 +265,7 @@ function buildDestinationCard(dest, index, total) {
         card.appendChild(buildTextField(`dest-access-key-${index}`, 'Access Key ID', dest.accessKeyID || ''));
         card.appendChild(buildPasswordField(`dest-secret-key-${index}`, 'Secret Access Key', dest.secretAccessKey || '', '此密钥通过 chrome.storage.sync 同步，并会嵌入导出的配置中'));
     } else {
-        card.appendChild(buildTextField(`dest-path-${index}`, '路径', dest.path || './repo', '本地归档目录路径'));
+        card.appendChild(buildTextField(`dest-path-${index}`, '路径', dest.path || '/app/repo', '本地归档目录路径'));
     }
 
     return card;
@@ -335,7 +335,7 @@ function collectDestinations() {
         list.push({
             name,
             type,
-            path: read(`#dest-path-${index}`, './repo'),
+            path: read(`#dest-path-${index}`, '/app/repo'),
             endpoint: read(`#dest-endpoint-${index}`),
             region: read(`#dest-region-${index}`),
             bucket: read(`#dest-bucket-${index}`),
