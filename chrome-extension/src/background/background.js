@@ -12,12 +12,18 @@ const DEFAULT_SETTINGS = {
   defaultFormat: 'yaml',
   filenameTemplate: 'gitrieve-config-{date}',
   cronExpression: '0 * * * *',
-  storageBackend: 'localFile',
-  s3Endpoint: '',
-  s3Region: '',
-  s3Bucket: '',
-  s3AccessKeyID: '',
-  s3SecretAccessKey: '',
+  storageDestinations: [
+    {
+      name: 'localFile',
+      type: 'file',
+      path: './repo',
+      endpoint: '',
+      region: '',
+      bucket: '',
+      accessKeyID: '',
+      secretAccessKey: ''
+    }
+  ],
   downloadReleases: true,
   downloadIssues: true,
   downloadWiki: true,
@@ -28,6 +34,13 @@ const DEFAULT_SETTINGS = {
   releaseNumLimit: 3,
   server: { host: '0.0.0.0', port: '8080', dbPath: '/app/data/gitrieve.db', authEnabled: false, authToken: '' }
 };
+
+function resolveDestinations(destinations) {
+  const valid = Array.isArray(destinations)
+    ? destinations.filter(d => d && typeof d.name === 'string' && d.name.trim() && typeof d.type === 'string')
+    : [];
+  return valid.length > 0 ? valid : [{ name: 'localFile', type: 'file', path: './repo' }];
+}
 
 function cleanUrl(url, settings = {}) {
   if (!url || typeof url !== 'string') return '';
@@ -92,12 +105,12 @@ function generateRepoConfig(urlObj, settings = {}) {
   const idx = parts.findIndex(p => p.includes('github.com'));
   const owner = parts[idx + 1];
   const repo = parts[idx + 2];
-  const backend = settings.storageBackend || 'localFile';
+  const destinations = resolveDestinations(settings.storageDestinations);
   return {
     name: sanitizeName(urlObj.title || repo),
     url: `github.com/${owner}/${repo}`,
     cron: settings.cronExpression || '0 * * * *',
-    storage: [backend],
+    storage: destinations.map(d => d.name),
     useCache: true,
     allBranches: true,
     depth: 0,
@@ -109,18 +122,20 @@ function generateRepoConfig(urlObj, settings = {}) {
 }
 
 function buildStorage(settings) {
-  if (settings.storageBackend === 's3') {
-    return [{
-      name: 's3',
-      type: 's3',
-      endpoint: settings.s3Endpoint,
-      region: settings.s3Region,
-      bucket: settings.s3Bucket,
-      accessKeyID: settings.s3AccessKeyID,
-      secretAccessKey: settings.s3SecretAccessKey
-    }];
-  }
-  return [{ name: 'localFile', type: 'file', path: './repo' }];
+  return resolveDestinations(settings.storageDestinations).map(d => {
+    const base = { name: d.name, type: d.type };
+    if (d.type === 's3') {
+      return {
+        ...base,
+        endpoint: d.endpoint || '',
+        region: d.region || '',
+        bucket: d.bucket || '',
+        accessKeyID: d.accessKeyID || '',
+        secretAccessKey: d.secretAccessKey || ''
+      };
+    }
+    return { ...base, path: d.path || './repo' };
+  });
 }
 
 function buildConfig(repos, settings) {
@@ -139,7 +154,7 @@ function toYAML(config) {
   const lines = ['repository:'];
   config.repository.forEach(r => {
     lines.push(`  - name: ${yamlQuote(r.name)}`, `    url: ${r.url}`, `    cron: "${r.cron}"`, '    storage:');
-    r.storage.forEach(s => lines.push(`      - ${s}`));
+    r.storage.forEach(s => lines.push(`      - ${yamlQuote(s)}`));
     lines.push(
       `    useCache: ${r.useCache ? 'True' : 'False'}`,
       `    allBranches: ${r.allBranches ? 'True' : 'False'}`,
@@ -152,7 +167,7 @@ function toYAML(config) {
     );
   });
   config.storage.forEach(s => {
-    lines.push('storage:', `  - name: ${s.name}`, `    type: ${s.type}`);
+    lines.push('storage:', `  - name: ${yamlQuote(s.name)}`, `    type: ${s.type}`);
     if (s.path) lines.push(`    path: ${s.path}`);
     if (s.endpoint) lines.push(`    endpoint: ${s.endpoint}`);
     if (s.region) lines.push(`    region: ${s.region}`);

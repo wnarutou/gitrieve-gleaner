@@ -257,6 +257,10 @@ global.chrome = {
     sync: {
       get: (defaults) => Promise.resolve({
         ...defaults,
+        storageDestinations: [
+          { name: 'archive-local', type: 'file', path: '/data/repos' },
+          { name: 'public-s3', type: 's3', endpoint: 's3.example.com', region: 'us-east-1', bucket: 'my-bucket', accessKeyID: 'AKIA', secretAccessKey: 'sk' }
+        ],
         server: { ...defaults.server, port: '9000', authEnabled: true }
       })
     }
@@ -276,6 +280,8 @@ backgroundHandler({ action: 'processBookmarks' }, {}, (resp) => {
   assert(resp.data.yaml.includes('  port: "9000"'), 'background 读取 storage 中的 server.port');
   assert(resp.data.yaml.includes('  authEnabled: true'), 'background server.authEnabled 输出');
   assert(resp.data.yaml.includes('cron: "0 * * * *"'), 'background 默认 cron');
+  assert(resp.data.yaml.includes('    storage:\n      - "archive-local"\n      - "public-s3"'), 'background 仓库条目引用全部目的地');
+  assert(resp.data.yaml.includes('  - name: "public-s3"'), 'background storage 段包含 s3 目的地');
   assert(resp.data.json.includes('"server"'), 'background JSON 包含 server 段');
   assert(!resp.data.yaml.includes('undefined'), 'background YAML 无 undefined');
 
