@@ -3,4 +3,5 @@ node_modules/
 *.pem
 .DS_Store
 .claude/*
+.superpowers/
 .devcontainer/devcontainer-lock.json
