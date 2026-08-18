@@ -129,7 +129,9 @@ class ConfigGenerator {
   }
 
   static yamlQuote(name) {
-    return /[:\s"'{}[\]\],&*?|#<>!=%@`-]/.test(name) ? `"${name.replace(/"/g, '\\"')}"` : name;
+    return /[:\s\\"'{}[\]\],&*?|#<>!=%@`-]/.test(name)
+      ? `"${name.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+      : name;
   }
 
   /**
