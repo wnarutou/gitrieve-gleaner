@@ -230,6 +230,20 @@ try {
     const yamlFallback = ConfigGenerator.generateYAML(uniqueUrls, { storageDestinations: [] });
     assert(yamlFallback.includes('  - name: localFile'), 'storageDestinations 为空时回退默认本地目的地');
 
+    console.log('\n=== 反斜杠名称转义测试 ===');
+
+    // 书签标题含字面反斜杠（如 "小狼毫\trime"、"简约皮肤\拼音"）时，
+    // 双引号 YAML 字符串必须将 \ 转义为 \\，否则下游 yaml 解析器报
+    // "found unknown escape character"。
+    const backslashTitle = 'SivanLaai/rime-pure 【小狼毫\\trime 同文】【简约皮肤\\拼音搜狗词库】';
+    const yamlBackslash = ConfigGenerator.generateYAML(
+      [{ url: 'https://github.com/SivanLaai/rime-pure', title: backslashTitle }]
+    );
+    assert(yamlBackslash.includes('小狼毫\\\\trime'), 'YAML 中反斜杠被转义为 \\\\（t 前为两个反斜杠）');
+    assert(yamlBackslash.includes('简约皮肤\\\\拼音'), '中文后紧跟的反斜杠也被转义');
+    assert(!yamlBackslash.includes('小狼毫\\trime'), 'YAML 不再包含未转义的 \\t 序列');
+    assert(ConfigGenerator.yamlQuote('a\\b') === '"a\\\\b"', 'yamlQuote 对含反斜杠的值加引号并转义');
+
     if (failed.length > 0) {
       console.error('\n共 ' + failed.length + ' 项断言失败');
       process.exitCode = 1;
