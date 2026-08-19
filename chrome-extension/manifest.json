@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Gitrieve Bookmark Extractor",
-  "version": "1.1",
+  "version": "1.2",
   "description": "从Chrome书签中提取GitHub仓库并转换为gitrieve配置",
   "permissions": ["bookmarks", "storage"],
   "background": {
