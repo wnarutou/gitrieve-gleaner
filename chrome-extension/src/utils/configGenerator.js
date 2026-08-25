@@ -18,6 +18,10 @@ class ConfigGenerator {
         }
       ],
       githubToken: 'your_github_token_here',
+      githubApiConcurrency: 2,
+      githubMinRequestInterval: '200ms',
+      githubLowRemainingThreshold: 100,
+      githubScheduleJitter: '30s',
       cocurrencyNum: 6,
       releaseSizeLimit: 300000000,
       releaseNumLimit: 3,
@@ -59,6 +63,10 @@ class ConfigGenerator {
       downloadWiki: true,
       downloadDiscussion: true,
       githubToken: 'your_github_token_here',
+      githubApiConcurrency: 2,
+      githubMinRequestInterval: '200ms',
+      githubLowRemainingThreshold: 100,
+      githubScheduleJitter: '30s',
       concurrencyNum: 6,
       releaseSizeLimit: 300000000,
       releaseNumLimit: 3,
@@ -163,6 +171,10 @@ class ConfigGenerator {
         return { ...base, path: d.path || '/app/repo' };
       }),
       githubToken: merged.githubToken,
+      githubApiConcurrency: merged.githubApiConcurrency,
+      githubMinRequestInterval: merged.githubMinRequestInterval,
+      githubLowRemainingThreshold: merged.githubLowRemainingThreshold,
+      githubScheduleJitter: merged.githubScheduleJitter,
       cocurrencyNum: merged.concurrencyNum,
       releaseSizeLimit: merged.releaseSizeLimit,
       releaseNumLimit: merged.releaseNumLimit,
@@ -232,6 +244,10 @@ class ConfigGenerator {
 
     // 添加全局配置
     yamlLines.push('githubToken: ' + config.githubToken);
+    yamlLines.push('githubApiConcurrency: ' + config.githubApiConcurrency);
+    yamlLines.push('githubMinRequestInterval: ' + config.githubMinRequestInterval);
+    yamlLines.push('githubLowRemainingThreshold: ' + config.githubLowRemainingThreshold);
+    yamlLines.push('githubScheduleJitter: ' + config.githubScheduleJitter);
     yamlLines.push('cocurrencyNum: ' + config.cocurrencyNum);
     yamlLines.push('releaseSizeLimit: ' + config.releaseSizeLimit);
     yamlLines.push('releaseNumLimit: ' + config.releaseNumLimit);

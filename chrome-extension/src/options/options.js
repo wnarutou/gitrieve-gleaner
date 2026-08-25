@@ -28,6 +28,10 @@ const DEFAULT_SETTINGS = {
     downloadWiki: true,
     downloadDiscussion: true,
     githubToken: 'your_github_token_here',
+    githubApiConcurrency: 2,
+    githubMinRequestInterval: '200ms',
+    githubLowRemainingThreshold: 100,
+    githubScheduleJitter: '30s',
     concurrencyNum: 6,
     releaseSizeLimit: 300000000,
     releaseNumLimit: 3,
@@ -56,6 +60,10 @@ const elements = {
     downloadWiki: document.getElementById('download-wiki'),
     downloadDiscussion: document.getElementById('download-discussion'),
     githubToken: document.getElementById('github-token'),
+    githubApiConcurrency: document.getElementById('github-api-concurrency'),
+    githubMinRequestInterval: document.getElementById('github-min-request-interval'),
+    githubLowRemainingThreshold: document.getElementById('github-low-remaining-threshold'),
+    githubScheduleJitter: document.getElementById('github-schedule-jitter'),
     concurrencyNum: document.getElementById('concurrency-num'),
     releaseSizeLimit: document.getElementById('release-size-limit'),
     releaseNumLimit: document.getElementById('release-num-limit'),
@@ -403,6 +411,10 @@ async function loadSettings() {
         elements.downloadWiki.checked = settings.downloadWiki;
         elements.downloadDiscussion.checked = settings.downloadDiscussion;
         elements.githubToken.value = settings.githubToken;
+        elements.githubApiConcurrency.value = settings.githubApiConcurrency;
+        elements.githubMinRequestInterval.value = settings.githubMinRequestInterval;
+        elements.githubLowRemainingThreshold.value = settings.githubLowRemainingThreshold;
+        elements.githubScheduleJitter.value = settings.githubScheduleJitter;
         elements.concurrencyNum.value = settings.concurrencyNum;
         elements.releaseSizeLimit.value = settings.releaseSizeLimit;
         elements.releaseNumLimit.value = settings.releaseNumLimit;
@@ -431,6 +443,17 @@ async function saveSettings() {
             return;
         }
 
+        const githubSettings = SettingsValidation.parseGitHubSettings({
+            githubApiConcurrency: elements.githubApiConcurrency.value,
+            githubMinRequestInterval: elements.githubMinRequestInterval.value,
+            githubLowRemainingThreshold: elements.githubLowRemainingThreshold.value,
+            githubScheduleJitter: elements.githubScheduleJitter.value
+        });
+        if (githubSettings.errors.length > 0) {
+            showStatusMessage('GitHub API 配置有误：' + githubSettings.errors.join('；'), true);
+            return;
+        }
+
         const settings = {
             filterGithub: elements.filterGithub.checked,
             removeFragments: elements.removeFragments.checked,
@@ -444,6 +467,7 @@ async function saveSettings() {
             downloadWiki: elements.downloadWiki.checked,
             downloadDiscussion: elements.downloadDiscussion.checked,
             githubToken: elements.githubToken.value,
+            ...githubSettings.value,
             concurrencyNum: parseInt(elements.concurrencyNum.value, 10) || 6,
             releaseSizeLimit: parseInt(elements.releaseSizeLimit.value, 10) || 300000000,
             releaseNumLimit: parseInt(elements.releaseNumLimit.value, 10) || 3,
@@ -484,6 +508,10 @@ function resetSettings() {
         elements.downloadWiki.checked = DEFAULT_SETTINGS.downloadWiki;
         elements.downloadDiscussion.checked = DEFAULT_SETTINGS.downloadDiscussion;
         elements.githubToken.value = DEFAULT_SETTINGS.githubToken;
+        elements.githubApiConcurrency.value = DEFAULT_SETTINGS.githubApiConcurrency;
+        elements.githubMinRequestInterval.value = DEFAULT_SETTINGS.githubMinRequestInterval;
+        elements.githubLowRemainingThreshold.value = DEFAULT_SETTINGS.githubLowRemainingThreshold;
+        elements.githubScheduleJitter.value = DEFAULT_SETTINGS.githubScheduleJitter;
         elements.concurrencyNum.value = DEFAULT_SETTINGS.concurrencyNum;
         elements.releaseSizeLimit.value = DEFAULT_SETTINGS.releaseSizeLimit;
         elements.releaseNumLimit.value = DEFAULT_SETTINGS.releaseNumLimit;

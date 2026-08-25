@@ -196,6 +196,10 @@ try {
         }
       ],
       downloadReleases: false,
+      githubApiConcurrency: 7,
+      githubMinRequestInterval: '750ms',
+      githubLowRemainingThreshold: 42,
+      githubScheduleJitter: '0s',
       server: { host: '127.0.0.1', port: '9000', dbPath: 'gitrieve.db', authEnabled: true, authToken: 'tok"en' }
     };
 
@@ -216,10 +220,19 @@ try {
     assert(yamlCustom.includes('    endpoint: s3.example.com'), 'storage 段 endpoint');
     assert(yamlCustom.includes('    bucket: my-bucket'), 'storage 段 bucket');
     assert(yamlCustom.includes('downloadReleases: False'), 'downloadReleases=false 生效');
+    assert(yamlCustom.includes('githubApiConcurrency: 7'), 'YAML 输出自定义 GitHub API 并发数');
+    assert(yamlCustom.includes('githubMinRequestInterval: 750ms'), 'YAML 输出自定义 GitHub API 最小请求间隔');
+    assert(yamlCustom.includes('githubLowRemainingThreshold: 42'), 'YAML 输出自定义 GitHub API 低配额阈值');
+    assert(yamlCustom.includes('githubScheduleJitter: 0s'), 'YAML 输出自定义 GitHub 定时任务错峰时间');
 
     const jsonCustom = ConfigGenerator.generateJSON(uniqueUrls, customSettings);
     assert(jsonCustom.includes('"server"'), 'JSON 包含 server 段');
     assert(jsonCustom.includes('"cocurrencyNum": 6'), 'JSON 输出键为 cocurrencyNum');
+    const parsedJsonCustom = JSON.parse(jsonCustom);
+    assert(parsedJsonCustom.githubApiConcurrency === 7, 'JSON 输出自定义 GitHub API 并发数');
+    assert(parsedJsonCustom.githubMinRequestInterval === '750ms', 'JSON 输出自定义 GitHub API 最小请求间隔');
+    assert(parsedJsonCustom.githubLowRemainingThreshold === 42, 'JSON 输出自定义 GitHub API 低配额阈值');
+    assert(parsedJsonCustom.githubScheduleJitter === '0s', 'JSON 输出自定义 GitHub 定时任务错峰时间');
 
     const yamlDefault = ConfigGenerator.generateYAML(uniqueUrls);
     assert(yamlDefault.includes('server:'), '默认配置也包含 server: 段');
@@ -227,6 +240,10 @@ try {
     assert(yamlDefault.includes('  port: "8080"'), '默认 server.port 为 "8080"');
     assert(yamlDefault.includes('  - name: localFile'), '默认 storage 段含本地目的地');
     assert(yamlDefault.includes('    path: /app/repo'), '默认本地路径 /app/repo');
+    assert(yamlDefault.includes('githubApiConcurrency: 2'), '默认 GitHub API 并发数与 gitrieve 一致');
+    assert(yamlDefault.includes('githubMinRequestInterval: 200ms'), '默认 GitHub API 最小请求间隔与 gitrieve 一致');
+    assert(yamlDefault.includes('githubLowRemainingThreshold: 100'), '默认 GitHub API 低配额阈值与 gitrieve 一致');
+    assert(yamlDefault.includes('githubScheduleJitter: 30s'), '默认 GitHub 定时任务错峰时间与 gitrieve 一致');
     const yamlFallback = ConfigGenerator.generateYAML(uniqueUrls, { storageDestinations: [] });
     assert(yamlFallback.includes('  - name: localFile'), 'storageDestinations 为空时回退默认本地目的地');
 
@@ -278,6 +295,10 @@ global.chrome = {
           { name: 'archive-local', type: 'file', path: '/data/repos' },
           { name: 'public-s3', type: 's3', endpoint: 's3.example.com', region: 'us-east-1', bucket: 'my-bucket', accessKeyID: 'AKIA', secretAccessKey: 'sk' }
         ],
+        githubApiConcurrency: 5,
+        githubMinRequestInterval: '500ms',
+        githubLowRemainingThreshold: 75,
+        githubScheduleJitter: '10s',
         server: { ...defaults.server, port: '9000', authEnabled: true }
       })
     }
@@ -301,6 +322,15 @@ backgroundHandler({ action: 'processBookmarks' }, {}, (resp) => {
   assert(resp.data.yaml.includes('  - name: "public-s3"'), 'background storage 段包含 s3 目的地');
   assert((resp.data.yaml.match(/^storage:/gm) || []).length === 1, 'background YAML 仅一个 storage: 头');
   assert(resp.data.json.includes('"server"'), 'background JSON 包含 server 段');
+  assert(resp.data.yaml.includes('githubApiConcurrency: 5'), 'background YAML 输出保存的 GitHub API 并发数');
+  assert(resp.data.yaml.includes('githubMinRequestInterval: 500ms'), 'background YAML 输出保存的 GitHub API 最小请求间隔');
+  assert(resp.data.yaml.includes('githubLowRemainingThreshold: 75'), 'background YAML 输出保存的 GitHub API 低配额阈值');
+  assert(resp.data.yaml.includes('githubScheduleJitter: 10s'), 'background YAML 输出保存的 GitHub 定时任务错峰时间');
+  const backgroundJson = JSON.parse(resp.data.json);
+  assert(backgroundJson.githubApiConcurrency === 5, 'background JSON 输出保存的 GitHub API 并发数');
+  assert(backgroundJson.githubMinRequestInterval === '500ms', 'background JSON 输出保存的 GitHub API 最小请求间隔');
+  assert(backgroundJson.githubLowRemainingThreshold === 75, 'background JSON 输出保存的 GitHub API 低配额阈值');
+  assert(backgroundJson.githubScheduleJitter === '10s', 'background JSON 输出保存的 GitHub 定时任务错峰时间');
   assert(!resp.data.yaml.includes('undefined'), 'background YAML 无 undefined');
 
   // 冒烟断言在异步回调内执行，退出码需在此设置

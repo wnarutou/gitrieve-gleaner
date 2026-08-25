@@ -122,6 +122,30 @@
                     </div>
 
                     <div class="config-item">
+                        <label for="github-api-concurrency">GitHub API 并发数</label>
+                        <input type="number" id="github-api-concurrency" value="2" min="1">
+                        <p class="help-text">同一 gitrieve 进程内并发执行的 GitHub API 请求数</p>
+                    </div>
+
+                    <div class="config-item">
+                        <label for="github-min-request-interval">GitHub API 最小请求间隔</label>
+                        <input type="text" id="github-min-request-interval" value="200ms">
+                        <p class="help-text">请求之间的最短间隔，例如 200ms、1s</p>
+                    </div>
+
+                    <div class="config-item">
+                        <label for="github-low-remaining-threshold">GitHub API 低配额阈值</label>
+                        <input type="number" id="github-low-remaining-threshold" value="100" min="1">
+                        <p class="help-text">剩余 API 配额低于此值时启用限流保护</p>
+                    </div>
+
+                    <div class="config-item">
+                        <label for="github-schedule-jitter">GitHub 定时任务错峰时间</label>
+                        <input type="text" id="github-schedule-jitter" value="30s">
+                        <p class="help-text">daemon cron 任务的随机错峰范围；设为 0s 可关闭</p>
+                    </div>
+
+                    <div class="config-item">
                         <label for="concurrency-num">并发数</label>
                         <input type="number" id="concurrency-num" value="6" min="1" max="20">
                         <p class="help-text">同时处理的仓库数量</p>
@@ -205,6 +229,7 @@
     </div>
 
     <script src="../utils/urlUtils.js"></script>
+    <script src="../utils/settingsValidation.js"></script>
     <script src="options.js"></script>
 </body>
 </html>
