@@ -3,6 +3,10 @@
  * 根据GitHub URL生成gitrieve YAML配置
  */
 
+const CronScheduleApi = typeof globalThis !== 'undefined' && globalThis.CronSchedule
+  ? globalThis.CronSchedule
+  : require('./cronSchedule.js');
+
 class ConfigGenerator {
   /**
    * 默认配置模板
@@ -45,7 +49,10 @@ class ConfigGenerator {
       normalizeUrls: true,
       defaultFormat: 'yaml',
       filenameTemplate: 'gitrieve-config-{date}',
+      cronMode: 'custom',
       cronExpression: '0 * * * *',
+      cronRangeStart: '09:00',
+      cronRangeEnd: '17:00',
       storageDestinations: [
         {
           name: 'localFile',
@@ -99,7 +106,7 @@ class ConfigGenerator {
    * @param {object} settings - 设置模型对象
    * @returns {object} 仓库配置对象
    */
-  static generateRepoConfig(url, title = '', settings = {}) {
+  static generateRepoConfig(url, title = '', settings = {}, cronExpression = null) {
     const urlParts = url.split('/');
     const domainIndex = urlParts.findIndex(part => part.includes('github.com'));
 
@@ -115,7 +122,7 @@ class ConfigGenerator {
     return {
       name: name,
       url: `github.com/${owner}/${repo}`,
-      cron: settings.cronExpression || '0 * * * *',
+      cron: cronExpression || settings.cronExpression || '0 * * * *',
       storage: destinations.map(d => d.name),
       useCache: true,
       allBranches: true,
@@ -151,10 +158,11 @@ class ConfigGenerator {
   static generateFullConfig(githubUrls, settings = {}) {
     const merged = { ...this.DEFAULT_SETTINGS, ...settings };
     merged.server = { ...this.DEFAULT_SETTINGS.server, ...(settings.server || {}) };
+    const cronExpressions = CronScheduleApi.generate(githubUrls.length, merged);
 
     const config = {
-      repository: githubUrls.map(urlObj =>
-        this.generateRepoConfig(urlObj.url, urlObj.title, merged)
+      repository: githubUrls.map((urlObj, index) =>
+        this.generateRepoConfig(urlObj.url, urlObj.title, merged, cronExpressions[index])
       ),
       storage: this.resolveDestinations(merged.storageDestinations).map(d => {
         const base = { name: d.name, type: d.type };

@@ -10,7 +10,10 @@ const DEFAULT_SETTINGS = {
     normalizeUrls: true,
     defaultFormat: 'yaml',
     filenameTemplate: 'gitrieve-config-{date}',
+    cronMode: 'custom',
     cronExpression: '0 * * * *',
+    cronRangeStart: '09:00',
+    cronRangeEnd: '17:00',
     storageDestinations: [
         {
             name: 'localFile',
@@ -52,7 +55,15 @@ const elements = {
     normalizeUrls: document.getElementById('normalize-urls'),
     defaultFormat: document.getElementById('default-format'),
     filenameTemplate: document.getElementById('filename-template'),
+    cronMode: document.getElementById('cron-mode'),
+    cronExpressionGroup: document.getElementById('cron-expression-group'),
     cronExpression: document.getElementById('cron-expression'),
+    cronRangeGroups: [
+        document.getElementById('cron-range-start-group'),
+        document.getElementById('cron-range-end-group')
+    ],
+    cronRangeStart: document.getElementById('cron-range-start'),
+    cronRangeEnd: document.getElementById('cron-range-end'),
     storageDestinations: document.getElementById('storage-destinations'),
     addDestinationBtn: document.getElementById('add-destination-btn'),
     downloadReleases: document.getElementById('download-releases'),
@@ -121,6 +132,8 @@ function bindEvents() {
     // 保存设置
     elements.saveBtn.addEventListener('click', saveSettings);
 
+    elements.cronMode.addEventListener('change', updateCronFieldVisibility);
+
     // 恢复默认
     elements.resetBtn.addEventListener('click', resetSettings);
 
@@ -156,6 +169,12 @@ function bindEvents() {
         // 在新标签页中打开问题报告页面
         chrome.tabs.create({ url: 'https://github.com/wnarutou/gitrieve/issues' });
     });
+}
+
+function updateCronFieldVisibility() {
+    const visible = CronSchedule.visibleFields(elements.cronMode.value);
+    elements.cronExpressionGroup.classList.toggle('hidden', !visible.expression);
+    elements.cronRangeGroups.forEach(group => group.classList.toggle('hidden', !visible.range));
 }
 
 /**
@@ -396,7 +415,11 @@ async function loadSettings() {
         elements.normalizeUrls.checked = settings.normalizeUrls;
         elements.defaultFormat.value = settings.defaultFormat;
         elements.filenameTemplate.value = settings.filenameTemplate;
+        elements.cronMode.value = settings.cronMode;
         elements.cronExpression.value = settings.cronExpression;
+        elements.cronRangeStart.value = settings.cronRangeStart;
+        elements.cronRangeEnd.value = settings.cronRangeEnd;
+        updateCronFieldVisibility();
         // 存储目的地：迁移旧扁平字段或读取数组
         if (settings.storageBackend !== undefined && settings.storageDestinations === undefined) {
             destinationState = migrateLegacyStorage(settings);
@@ -454,13 +477,25 @@ async function saveSettings() {
             return;
         }
 
+        const cronSettings = {
+            cronMode: elements.cronMode.value,
+            cronExpression: elements.cronExpression.value,
+            cronRangeStart: elements.cronRangeStart.value,
+            cronRangeEnd: elements.cronRangeEnd.value
+        };
+        const cronValidation = CronSchedule.validate(cronSettings);
+        if (cronValidation.errors.length > 0) {
+            showStatusMessage('定时任务配置有误：' + cronValidation.errors.join('；'), true);
+            return;
+        }
+
         const settings = {
             filterGithub: elements.filterGithub.checked,
             removeFragments: elements.removeFragments.checked,
             normalizeUrls: elements.normalizeUrls.checked,
             defaultFormat: elements.defaultFormat.value,
             filenameTemplate: elements.filenameTemplate.value,
-            cronExpression: elements.cronExpression.value,
+            ...cronSettings,
             storageDestinations: destinations,
             downloadReleases: elements.downloadReleases.checked,
             downloadIssues: elements.downloadIssues.checked,
@@ -500,7 +535,11 @@ function resetSettings() {
         elements.normalizeUrls.checked = DEFAULT_SETTINGS.normalizeUrls;
         elements.defaultFormat.value = DEFAULT_SETTINGS.defaultFormat;
         elements.filenameTemplate.value = DEFAULT_SETTINGS.filenameTemplate;
+        elements.cronMode.value = DEFAULT_SETTINGS.cronMode;
         elements.cronExpression.value = DEFAULT_SETTINGS.cronExpression;
+        elements.cronRangeStart.value = DEFAULT_SETTINGS.cronRangeStart;
+        elements.cronRangeEnd.value = DEFAULT_SETTINGS.cronRangeEnd;
+        updateCronFieldVisibility();
         destinationState = DEFAULT_SETTINGS.storageDestinations.map(d => ({ ...d }));
         renderDestinations();
         elements.downloadReleases.checked = DEFAULT_SETTINGS.downloadReleases;

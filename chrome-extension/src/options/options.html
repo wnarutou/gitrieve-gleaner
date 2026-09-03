@@ -71,9 +71,32 @@
                 <div class="config-group">
                     <h3>gitrieve配置模板</h3>
                     <div class="config-item">
-                        <label for="cron-expression">定时任务表达式</label>
+                        <label for="cron-mode">定时任务模式</label>
+                        <select id="cron-mode">
+                            <option value="custom">自定义 cron</option>
+                            <option value="daily">每天随机打散</option>
+                            <option value="weekly">每周随机打散</option>
+                            <option value="monthly">每月随机打散（1–28 日）</option>
+                            <option value="dailyRange">每日指定时段随机打散</option>
+                        </select>
+                        <p class="help-text">自动模式会在每次生成配置时重新随机；分钟槽足够时，同批仓库不会同时启动</p>
+                    </div>
+
+                    <div class="config-item" id="cron-expression-group">
+                        <label for="cron-expression">自定义 cron 表达式</label>
                         <input type="text" id="cron-expression" value="0 * * * *">
-                        <p class="help-text">cron表达式，默认每小时执行一次</p>
+                        <p class="help-text">仅用于“自定义 cron”模式，默认每小时执行一次</p>
+                    </div>
+
+                    <div class="config-item hidden" id="cron-range-start-group">
+                        <label for="cron-range-start">每日时段开始时间</label>
+                        <input type="time" id="cron-range-start" value="09:00">
+                    </div>
+
+                    <div class="config-item hidden" id="cron-range-end-group">
+                        <label for="cron-range-end">每日时段结束时间</label>
+                        <input type="time" id="cron-range-end" value="17:00">
+                        <p class="help-text">仅用于“每日指定时段”模式；结束时间早于开始时间时按跨午夜处理</p>
                     </div>
 
                     <div class="config-item">
@@ -229,6 +252,7 @@
     </div>
 
     <script src="../utils/urlUtils.js"></script>
+    <script src="../utils/cronSchedule.js"></script>
     <script src="../utils/settingsValidation.js"></script>
     <script src="options.js"></script>
 </body>

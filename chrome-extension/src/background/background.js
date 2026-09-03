@@ -2,6 +2,13 @@
  * Gitrieve书签提取器 - 后台脚本
  */
 
+if (typeof importScripts === 'function') {
+  importScripts('../utils/cronSchedule.js');
+}
+const cronScheduleApi = typeof globalThis !== 'undefined' && globalThis.CronSchedule
+  ? globalThis.CronSchedule
+  : require('../utils/cronSchedule.js');
+
 const GITHUB_REPO_RE = /^https?:\/\/(www\.)?github\.com\/[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+(\/)?$/;
 
 // 与 src/options/options.js 和 src/utils/configGenerator.js 的 DEFAULT_SETTINGS 保持一致
@@ -11,7 +18,10 @@ const DEFAULT_SETTINGS = {
   normalizeUrls: true,
   defaultFormat: 'yaml',
   filenameTemplate: 'gitrieve-config-{date}',
+  cronMode: 'custom',
   cronExpression: '0 * * * *',
+  cronRangeStart: '09:00',
+  cronRangeEnd: '17:00',
   storageDestinations: [
     {
       name: 'localFile',
@@ -104,7 +114,7 @@ function countBookmarks(tree) {
   return n;
 }
 
-function generateRepoConfig(urlObj, settings = {}) {
+function generateRepoConfig(urlObj, settings = {}, cronExpression = null) {
   const parts = urlObj.url.split('/');
   const idx = parts.findIndex(p => p.includes('github.com'));
   const owner = parts[idx + 1];
@@ -113,7 +123,7 @@ function generateRepoConfig(urlObj, settings = {}) {
   return {
     name: sanitizeName(urlObj.title || repo),
     url: `github.com/${owner}/${repo}`,
-    cron: settings.cronExpression || '0 * * * *',
+    cron: cronExpression || settings.cronExpression || '0 * * * *',
     storage: destinations.map(d => d.name),
     useCache: true,
     allBranches: true,
@@ -220,7 +230,11 @@ async function processBookmarks() {
     const tree = await getBookmarkTree();
     const urls = extractGitHubUrls(tree, settings);
     const unique = dedupeUrls(urls);
-    const config = buildConfig(unique.map(u => generateRepoConfig(u, settings)), settings);
+    const cronExpressions = cronScheduleApi.generate(unique.length, settings);
+    const config = buildConfig(
+      unique.map((url, index) => generateRepoConfig(url, settings, cronExpressions[index])),
+      settings
+    );
     return {
       success: true,
       data: {
