@@ -109,6 +109,7 @@ header h1 {
 }
 
 .config-item input[type="text"],
+.config-item input[type="time"],
 .config-item select {
     width: 100%;
     padding: var(--spacing-sm) var(--spacing-md);
@@ -121,6 +122,7 @@ header h1 {
 }
 
 .config-item input[type="text"]:focus,
+.config-item input[type="time"]:focus,
 .config-item select:focus {
     outline: none;
     border-color: var(--primary-color);

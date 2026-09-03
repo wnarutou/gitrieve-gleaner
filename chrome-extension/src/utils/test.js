@@ -234,6 +234,17 @@ try {
     assert(parsedJsonCustom.githubLowRemainingThreshold === 42, 'JSON 输出自定义 GitHub API 低配额阈值');
     assert(parsedJsonCustom.githubScheduleJitter === '0s', 'JSON 输出自定义 GitHub 定时任务错峰时间');
 
+    const monthlyConfig = ConfigGenerator.generateFullConfig(uniqueUrls, { cronMode: 'monthly' });
+    const monthlyCrons = monthlyConfig.repository.map(repo => repo.cron);
+    assert(new Set(monthlyCrons).size === monthlyCrons.length, 'ConfigGenerator 月度模式使用不重复分钟槽');
+    assert(monthlyCrons.every(expression => {
+      const [minute, hour, day, month, weekday] = expression.split(' ');
+      return Number(minute) >= 0 && Number(minute) <= 59 &&
+        Number(hour) >= 0 && Number(hour) <= 23 &&
+        Number(day) >= 1 && Number(day) <= 28 &&
+        month === '*' && weekday === '*';
+    }), 'ConfigGenerator 月度模式输出日、时、分 cron');
+
     const yamlDefault = ConfigGenerator.generateYAML(uniqueUrls);
     assert(yamlDefault.includes('server:'), '默认配置也包含 server: 段');
     assert(yamlDefault.includes('  host: 0.0.0.0'), '默认 server.host 为 0.0.0.0');
@@ -283,7 +294,8 @@ global.chrome = {
   bookmarks: {
     getTree: (cb) => cb([
       { id: '0', title: '', children: [
-        { id: '1', title: 'Vue', url: 'https://github.com/vuejs/vue' }
+        { id: '1', title: 'Vue', url: 'https://github.com/vuejs/vue' },
+        { id: '2', title: 'React', url: 'https://github.com/facebook/react' }
       ] }
     ])
   },
@@ -299,6 +311,7 @@ global.chrome = {
         githubMinRequestInterval: '500ms',
         githubLowRemainingThreshold: 75,
         githubScheduleJitter: '10s',
+        cronMode: 'weekly',
         server: { ...defaults.server, port: '9000', authEnabled: true }
       })
     }
@@ -317,7 +330,6 @@ backgroundHandler({ action: 'processBookmarks' }, {}, (resp) => {
   assert(resp.data.yaml.includes('server:'), 'background YAML 包含 server:');
   assert(resp.data.yaml.includes('  port: "9000"'), 'background 读取 storage 中的 server.port');
   assert(resp.data.yaml.includes('  authEnabled: true'), 'background server.authEnabled 输出');
-  assert(resp.data.yaml.includes('cron: "0 * * * *"'), 'background 默认 cron');
   assert(resp.data.yaml.includes('    storage:\n      - "archive-local"\n      - "public-s3"'), 'background 仓库条目引用全部目的地');
   assert(resp.data.yaml.includes('  - name: "public-s3"'), 'background storage 段包含 s3 目的地');
   assert((resp.data.yaml.match(/^storage:/gm) || []).length === 1, 'background YAML 仅一个 storage: 头');
@@ -331,6 +343,14 @@ backgroundHandler({ action: 'processBookmarks' }, {}, (resp) => {
   assert(backgroundJson.githubMinRequestInterval === '500ms', 'background JSON 输出保存的 GitHub API 最小请求间隔');
   assert(backgroundJson.githubLowRemainingThreshold === 75, 'background JSON 输出保存的 GitHub API 低配额阈值');
   assert(backgroundJson.githubScheduleJitter === '10s', 'background JSON 输出保存的 GitHub 定时任务错峰时间');
+  const backgroundCrons = backgroundJson.repository.map(repo => repo.cron);
+  assert(new Set(backgroundCrons).size === 2, 'background 每周模式为仓库分配不同分钟槽');
+  assert(backgroundCrons.every(expression => {
+    const [minute, hour, day, month, weekday] = expression.split(' ');
+    return Number(minute) >= 0 && Number(minute) <= 59 &&
+      Number(hour) >= 0 && Number(hour) <= 23 &&
+      day === '*' && month === '*' && Number(weekday) >= 0 && Number(weekday) <= 6;
+  }), 'background 每周模式输出星期、小时和分钟 cron');
   assert(!resp.data.yaml.includes('undefined'), 'background YAML 无 undefined');
 
   // 冒烟断言在异步回调内执行，退出码需在此设置
