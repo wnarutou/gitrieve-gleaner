@@ -200,6 +200,10 @@ try {
       githubMinRequestInterval: '750ms',
       githubLowRemainingThreshold: 42,
       githubScheduleJitter: '0s',
+      retryMaxCount: 5,
+      retryBaseDelay: '2s',
+      syncOverdueGrace: '45m',
+      syncStuckThreshold: '12h',
       server: { host: '127.0.0.1', port: '9000', dbPath: 'gitrieve.db', authEnabled: true, authToken: 'tok"en' }
     };
 
@@ -224,6 +228,10 @@ try {
     assert(yamlCustom.includes('githubMinRequestInterval: 750ms'), 'YAML 输出自定义 GitHub API 最小请求间隔');
     assert(yamlCustom.includes('githubLowRemainingThreshold: 42'), 'YAML 输出自定义 GitHub API 低配额阈值');
     assert(yamlCustom.includes('githubScheduleJitter: 0s'), 'YAML 输出自定义 GitHub 定时任务错峰时间');
+    assert(yamlCustom.includes('retryMaxCount: 5'), 'YAML 输出自定义最大重试次数');
+    assert(yamlCustom.includes('retryBaseDelay: 2s'), 'YAML 输出自定义重试基础延迟');
+    assert(yamlCustom.includes('syncOverdueGrace: 45m'), 'YAML 输出自定义同步逾期宽限时间');
+    assert(yamlCustom.includes('syncStuckThreshold: 12h'), 'YAML 输出自定义同步卡住阈值');
 
     const jsonCustom = ConfigGenerator.generateJSON(uniqueUrls, customSettings);
     assert(jsonCustom.includes('"server"'), 'JSON 包含 server 段');
@@ -233,6 +241,10 @@ try {
     assert(parsedJsonCustom.githubMinRequestInterval === '750ms', 'JSON 输出自定义 GitHub API 最小请求间隔');
     assert(parsedJsonCustom.githubLowRemainingThreshold === 42, 'JSON 输出自定义 GitHub API 低配额阈值');
     assert(parsedJsonCustom.githubScheduleJitter === '0s', 'JSON 输出自定义 GitHub 定时任务错峰时间');
+    assert(parsedJsonCustom.retryMaxCount === 5, 'JSON 输出自定义最大重试次数');
+    assert(parsedJsonCustom.retryBaseDelay === '2s', 'JSON 输出自定义重试基础延迟');
+    assert(parsedJsonCustom.syncOverdueGrace === '45m', 'JSON 输出自定义同步逾期宽限时间');
+    assert(parsedJsonCustom.syncStuckThreshold === '12h', 'JSON 输出自定义同步卡住阈值');
 
     const monthlyConfig = ConfigGenerator.generateFullConfig(uniqueUrls, { cronMode: 'monthly' });
     const monthlyCrons = monthlyConfig.repository.map(repo => repo.cron);
@@ -255,6 +267,10 @@ try {
     assert(yamlDefault.includes('githubMinRequestInterval: 200ms'), '默认 GitHub API 最小请求间隔与 gitrieve 一致');
     assert(yamlDefault.includes('githubLowRemainingThreshold: 100'), '默认 GitHub API 低配额阈值与 gitrieve 一致');
     assert(yamlDefault.includes('githubScheduleJitter: 30s'), '默认 GitHub 定时任务错峰时间与 gitrieve 一致');
+    assert(yamlDefault.includes('retryMaxCount: 3'), '默认最大重试次数与 gitrieve 一致');
+    assert(yamlDefault.includes('retryBaseDelay: 5s'), '默认重试基础延迟与 gitrieve 一致');
+    assert(yamlDefault.includes('syncOverdueGrace: 30m'), '默认同步逾期宽限时间与 gitrieve 一致');
+    assert(yamlDefault.includes('syncStuckThreshold: 24h'), '默认同步卡住阈值与 gitrieve 一致');
     const yamlFallback = ConfigGenerator.generateYAML(uniqueUrls, { storageDestinations: [] });
     assert(yamlFallback.includes('  - name: localFile'), 'storageDestinations 为空时回退默认本地目的地');
 
@@ -311,6 +327,10 @@ global.chrome = {
         githubMinRequestInterval: '500ms',
         githubLowRemainingThreshold: 75,
         githubScheduleJitter: '10s',
+        retryMaxCount: 7,
+        retryBaseDelay: '3s',
+        syncOverdueGrace: '1h',
+        syncStuckThreshold: '18h',
         cronMode: 'weekly',
         server: { ...defaults.server, port: '9000', authEnabled: true }
       })
@@ -338,11 +358,19 @@ backgroundHandler({ action: 'processBookmarks' }, {}, (resp) => {
   assert(resp.data.yaml.includes('githubMinRequestInterval: 500ms'), 'background YAML 输出保存的 GitHub API 最小请求间隔');
   assert(resp.data.yaml.includes('githubLowRemainingThreshold: 75'), 'background YAML 输出保存的 GitHub API 低配额阈值');
   assert(resp.data.yaml.includes('githubScheduleJitter: 10s'), 'background YAML 输出保存的 GitHub 定时任务错峰时间');
+  assert(resp.data.yaml.includes('retryMaxCount: 7'), 'background YAML 输出保存的最大重试次数');
+  assert(resp.data.yaml.includes('retryBaseDelay: 3s'), 'background YAML 输出保存的重试基础延迟');
+  assert(resp.data.yaml.includes('syncOverdueGrace: 1h'), 'background YAML 输出保存的同步逾期宽限时间');
+  assert(resp.data.yaml.includes('syncStuckThreshold: 18h'), 'background YAML 输出保存的同步卡住阈值');
   const backgroundJson = JSON.parse(resp.data.json);
   assert(backgroundJson.githubApiConcurrency === 5, 'background JSON 输出保存的 GitHub API 并发数');
   assert(backgroundJson.githubMinRequestInterval === '500ms', 'background JSON 输出保存的 GitHub API 最小请求间隔');
   assert(backgroundJson.githubLowRemainingThreshold === 75, 'background JSON 输出保存的 GitHub API 低配额阈值');
   assert(backgroundJson.githubScheduleJitter === '10s', 'background JSON 输出保存的 GitHub 定时任务错峰时间');
+  assert(backgroundJson.retryMaxCount === 7, 'background JSON 输出保存的最大重试次数');
+  assert(backgroundJson.retryBaseDelay === '3s', 'background JSON 输出保存的重试基础延迟');
+  assert(backgroundJson.syncOverdueGrace === '1h', 'background JSON 输出保存的同步逾期宽限时间');
+  assert(backgroundJson.syncStuckThreshold === '18h', 'background JSON 输出保存的同步卡住阈值');
   const backgroundCrons = backgroundJson.repository.map(repo => repo.cron);
   assert(new Set(backgroundCrons).size === 2, 'background 每周模式为仓库分配不同分钟槽');
   assert(backgroundCrons.every(expression => {

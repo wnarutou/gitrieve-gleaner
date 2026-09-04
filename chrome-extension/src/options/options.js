@@ -35,6 +35,10 @@ const DEFAULT_SETTINGS = {
     githubMinRequestInterval: '200ms',
     githubLowRemainingThreshold: 100,
     githubScheduleJitter: '30s',
+    retryMaxCount: 3,
+    retryBaseDelay: '5s',
+    syncOverdueGrace: '30m',
+    syncStuckThreshold: '24h',
     concurrencyNum: 6,
     releaseSizeLimit: 300000000,
     releaseNumLimit: 3,
@@ -75,6 +79,10 @@ const elements = {
     githubMinRequestInterval: document.getElementById('github-min-request-interval'),
     githubLowRemainingThreshold: document.getElementById('github-low-remaining-threshold'),
     githubScheduleJitter: document.getElementById('github-schedule-jitter'),
+    retryMaxCount: document.getElementById('retry-max-count'),
+    retryBaseDelay: document.getElementById('retry-base-delay'),
+    syncOverdueGrace: document.getElementById('sync-overdue-grace'),
+    syncStuckThreshold: document.getElementById('sync-stuck-threshold'),
     concurrencyNum: document.getElementById('concurrency-num'),
     releaseSizeLimit: document.getElementById('release-size-limit'),
     releaseNumLimit: document.getElementById('release-num-limit'),
@@ -438,6 +446,10 @@ async function loadSettings() {
         elements.githubMinRequestInterval.value = settings.githubMinRequestInterval;
         elements.githubLowRemainingThreshold.value = settings.githubLowRemainingThreshold;
         elements.githubScheduleJitter.value = settings.githubScheduleJitter;
+        elements.retryMaxCount.value = settings.retryMaxCount;
+        elements.retryBaseDelay.value = settings.retryBaseDelay;
+        elements.syncOverdueGrace.value = settings.syncOverdueGrace;
+        elements.syncStuckThreshold.value = settings.syncStuckThreshold;
         elements.concurrencyNum.value = settings.concurrencyNum;
         elements.releaseSizeLimit.value = settings.releaseSizeLimit;
         elements.releaseNumLimit.value = settings.releaseNumLimit;
@@ -477,6 +489,17 @@ async function saveSettings() {
             return;
         }
 
+        const runtimeSettings = SettingsValidation.parseRuntimeSettings({
+            retryMaxCount: elements.retryMaxCount.value,
+            retryBaseDelay: elements.retryBaseDelay.value,
+            syncOverdueGrace: elements.syncOverdueGrace.value,
+            syncStuckThreshold: elements.syncStuckThreshold.value
+        });
+        if (runtimeSettings.errors.length > 0) {
+            showStatusMessage('运行策略配置有误：' + runtimeSettings.errors.join('；'), true);
+            return;
+        }
+
         const cronSettings = {
             cronMode: elements.cronMode.value,
             cronExpression: elements.cronExpression.value,
@@ -503,6 +526,7 @@ async function saveSettings() {
             downloadDiscussion: elements.downloadDiscussion.checked,
             githubToken: elements.githubToken.value,
             ...githubSettings.value,
+            ...runtimeSettings.value,
             concurrencyNum: parseInt(elements.concurrencyNum.value, 10) || 6,
             releaseSizeLimit: parseInt(elements.releaseSizeLimit.value, 10) || 300000000,
             releaseNumLimit: parseInt(elements.releaseNumLimit.value, 10) || 3,
@@ -551,6 +575,10 @@ function resetSettings() {
         elements.githubMinRequestInterval.value = DEFAULT_SETTINGS.githubMinRequestInterval;
         elements.githubLowRemainingThreshold.value = DEFAULT_SETTINGS.githubLowRemainingThreshold;
         elements.githubScheduleJitter.value = DEFAULT_SETTINGS.githubScheduleJitter;
+        elements.retryMaxCount.value = DEFAULT_SETTINGS.retryMaxCount;
+        elements.retryBaseDelay.value = DEFAULT_SETTINGS.retryBaseDelay;
+        elements.syncOverdueGrace.value = DEFAULT_SETTINGS.syncOverdueGrace;
+        elements.syncStuckThreshold.value = DEFAULT_SETTINGS.syncStuckThreshold;
         elements.concurrencyNum.value = DEFAULT_SETTINGS.concurrencyNum;
         elements.releaseSizeLimit.value = DEFAULT_SETTINGS.releaseSizeLimit;
         elements.releaseNumLimit.value = DEFAULT_SETTINGS.releaseNumLimit;

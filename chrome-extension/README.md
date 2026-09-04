@@ -56,6 +56,15 @@
 
 每次提取并生成配置都会重新随机。分钟槽足够时，同批仓库不会使用相同 cron；仓库数量超过可用分钟槽时，各槽位会被均衡复用。
 
+生成配置还支持以下 gitrieve 全局运行策略：
+
+- **最大重试次数**（`retryMaxCount`）：GitHub API 请求失败后的最大重试次数，默认 `3`
+- **重试基础延迟**（`retryBaseDelay`）：指数退避的基础延迟，默认 `5s`
+- **同步逾期宽限时间**（`syncOverdueGrace`）：超过计划执行时间后的逾期判定宽限，默认 `30m`
+- **同步卡住阈值**（`syncStuckThreshold`）：`pending` 或 `running` 状态的卡住判定阈值，默认 `24h`
+
+后三项时间配置使用 Go duration 格式，例如 `500ms`、`30m`、`12h`。
+
 ## 权限说明
 
 此扩展需要以下权限：
@@ -87,7 +96,9 @@ chrome-extension/
 │       ├── urlUtils.js   # URL处理工具
 │       ├── configGenerator.js # 配置生成器
 │       ├── cronSchedule.js # Cron 随机打散与校验
-│       └── cronSchedule.test.js # Cron 调度测试
+│       ├── cronSchedule.test.js # Cron 调度测试
+│       ├── settingsValidation.js # 全局配置输入校验
+│       └── settingsValidation.test.js # 全局配置校验测试
 └── assets/
     └── icons/            # 扩展图标
 ```

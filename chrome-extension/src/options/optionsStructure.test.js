@@ -28,4 +28,9 @@ const endTag = parentDivOpeningTag('cron-range-end');
 assert(startTag.includes('id="cron-range-start-group"') && startTag.includes('hidden'), '开始时间应位于默认隐藏的时间段组');
 assert(endTag.includes('id="cron-range-end-group"') && endTag.includes('hidden'), '结束时间应位于默认隐藏的时间段组');
 
-console.log('选项页 Cron 字段结构断言通过');
+parentDivOpeningTag('retry-max-count');
+parentDivOpeningTag('retry-base-delay');
+parentDivOpeningTag('sync-overdue-grace');
+parentDivOpeningTag('sync-stuck-threshold');
+
+console.log('选项页字段结构断言通过');

@@ -26,6 +26,10 @@ class ConfigGenerator {
       githubMinRequestInterval: '200ms',
       githubLowRemainingThreshold: 100,
       githubScheduleJitter: '30s',
+      retryMaxCount: 3,
+      retryBaseDelay: '5s',
+      syncOverdueGrace: '30m',
+      syncStuckThreshold: '24h',
       cocurrencyNum: 6,
       releaseSizeLimit: 300000000,
       releaseNumLimit: 3,
@@ -74,6 +78,10 @@ class ConfigGenerator {
       githubMinRequestInterval: '200ms',
       githubLowRemainingThreshold: 100,
       githubScheduleJitter: '30s',
+      retryMaxCount: 3,
+      retryBaseDelay: '5s',
+      syncOverdueGrace: '30m',
+      syncStuckThreshold: '24h',
       concurrencyNum: 6,
       releaseSizeLimit: 300000000,
       releaseNumLimit: 3,
@@ -183,6 +191,10 @@ class ConfigGenerator {
       githubMinRequestInterval: merged.githubMinRequestInterval,
       githubLowRemainingThreshold: merged.githubLowRemainingThreshold,
       githubScheduleJitter: merged.githubScheduleJitter,
+      retryMaxCount: merged.retryMaxCount,
+      retryBaseDelay: merged.retryBaseDelay,
+      syncOverdueGrace: merged.syncOverdueGrace,
+      syncStuckThreshold: merged.syncStuckThreshold,
       cocurrencyNum: merged.concurrencyNum,
       releaseSizeLimit: merged.releaseSizeLimit,
       releaseNumLimit: merged.releaseNumLimit,
@@ -256,6 +268,10 @@ class ConfigGenerator {
     yamlLines.push('githubMinRequestInterval: ' + config.githubMinRequestInterval);
     yamlLines.push('githubLowRemainingThreshold: ' + config.githubLowRemainingThreshold);
     yamlLines.push('githubScheduleJitter: ' + config.githubScheduleJitter);
+    yamlLines.push('retryMaxCount: ' + config.retryMaxCount);
+    yamlLines.push('retryBaseDelay: ' + config.retryBaseDelay);
+    yamlLines.push('syncOverdueGrace: ' + config.syncOverdueGrace);
+    yamlLines.push('syncStuckThreshold: ' + config.syncStuckThreshold);
     yamlLines.push('cocurrencyNum: ' + config.cocurrencyNum);
     yamlLines.push('releaseSizeLimit: ' + config.releaseSizeLimit);
     yamlLines.push('releaseNumLimit: ' + config.releaseNumLimit);
