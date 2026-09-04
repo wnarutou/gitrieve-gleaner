@@ -169,6 +169,30 @@
                     </div>
 
                     <div class="config-item">
+                        <label for="retry-max-count">最大重试次数</label>
+                        <input type="number" id="retry-max-count" value="3" min="1">
+                        <p class="help-text">GitHub API 请求失败后的最大重试次数</p>
+                    </div>
+
+                    <div class="config-item">
+                        <label for="retry-base-delay">重试基础延迟</label>
+                        <input type="text" id="retry-base-delay" value="5s">
+                        <p class="help-text">指数退避的基础延迟，例如 500ms、5s 或 1m</p>
+                    </div>
+
+                    <div class="config-item">
+                        <label for="sync-overdue-grace">同步逾期宽限时间</label>
+                        <input type="text" id="sync-overdue-grace" value="30m">
+                        <p class="help-text">仓库超过计划执行时间后，等待多久才标记为逾期</p>
+                    </div>
+
+                    <div class="config-item">
+                        <label for="sync-stuck-threshold">同步卡住阈值</label>
+                        <input type="text" id="sync-stuck-threshold" value="24h">
+                        <p class="help-text">pending 或 running 状态持续超过此时间后标记为卡住</p>
+                    </div>
+
+                    <div class="config-item">
                         <label for="concurrency-num">并发数</label>
                         <input type="number" id="concurrency-num" value="6" min="1" max="20">
                         <p class="help-text">同时处理的仓库数量</p>

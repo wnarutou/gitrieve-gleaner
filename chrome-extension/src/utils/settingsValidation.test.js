@@ -80,4 +80,36 @@ const unsafeInteger = SettingsValidation.parseGitHubSettings({
 assert.strictEqual(unsafeInteger.errors.length, 1);
 assert(unsafeInteger.errors[0].includes('GitHub API 并发数'));
 
-console.log('GitHub 配置输入校验断言通过');
+assert.strictEqual(
+  typeof SettingsValidation.parseRuntimeSettings,
+  'function',
+  '运行策略配置校验函数可用'
+);
+
+const validRuntime = SettingsValidation.parseRuntimeSettings({
+  retryMaxCount: '5',
+  retryBaseDelay: ' 2.5s ',
+  syncOverdueGrace: '45m',
+  syncStuckThreshold: '12h'
+});
+assert.deepStrictEqual(validRuntime.errors, []);
+assert.deepStrictEqual(validRuntime.value, {
+  retryMaxCount: 5,
+  retryBaseDelay: '2.5s',
+  syncOverdueGrace: '45m',
+  syncStuckThreshold: '12h'
+});
+
+const invalidRuntime = SettingsValidation.parseRuntimeSettings({
+  retryMaxCount: '0',
+  retryBaseDelay: '0s',
+  syncOverdueGrace: 'later',
+  syncStuckThreshold: '-1h'
+});
+assert.strictEqual(invalidRuntime.errors.length, 4);
+assert(invalidRuntime.errors.some(error => error.includes('最大重试次数')));
+assert(invalidRuntime.errors.some(error => error.includes('重试基础延迟')));
+assert(invalidRuntime.errors.some(error => error.includes('同步逾期宽限时间')));
+assert(invalidRuntime.errors.some(error => error.includes('同步卡住阈值')));
+
+console.log('全局配置输入校验断言通过');

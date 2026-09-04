@@ -1,5 +1,5 @@
 /**
- * Parse and validate the GitHub API coordination settings accepted by gitrieve.
+ * Parse and validate global settings accepted by gitrieve.
  */
 const SettingsValidation = (() => {
   const MAX_DURATION_NS = 9223372036854775807n;
@@ -91,7 +91,39 @@ const SettingsValidation = (() => {
     };
   }
 
-  return { parseGitHubSettings };
+  function parseRuntimeSettings(input) {
+    const errors = [];
+    const retryMaxCount = parsePositiveInteger(
+      input.retryMaxCount,
+      '最大重试次数',
+      errors
+    );
+    const retryBaseDelay = String(input.retryBaseDelay || '').trim();
+    const syncOverdueGrace = String(input.syncOverdueGrace || '').trim();
+    const syncStuckThreshold = String(input.syncStuckThreshold || '').trim();
+
+    if (!isDuration(retryBaseDelay, false)) {
+      errors.push('重试基础延迟必须是正数 Go duration，例如 500ms、5s 或 1m');
+    }
+    if (!isDuration(syncOverdueGrace, false)) {
+      errors.push('同步逾期宽限时间必须是正数 Go duration，例如 30m 或 1h');
+    }
+    if (!isDuration(syncStuckThreshold, false)) {
+      errors.push('同步卡住阈值必须是正数 Go duration，例如 12h 或 24h');
+    }
+
+    return {
+      errors,
+      value: {
+        retryMaxCount,
+        retryBaseDelay,
+        syncOverdueGrace,
+        syncStuckThreshold
+      }
+    };
+  }
+
+  return { parseGitHubSettings, parseRuntimeSettings };
 })();
 
 if (typeof module !== 'undefined' && module.exports) {
