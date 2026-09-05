@@ -88,6 +88,29 @@ class UrlUtils {
   }
 
   /**
+   * 生成与 Gitrieve 一致的仓库身份键。
+   * 去除空白、片段、协议、www、尾斜杠和 .git，并统一为小写。
+   * @param {string} url - 仓库URL
+   * @returns {string} 仓库身份键
+   */
+  static repositoryKey(url) {
+    if (!url || typeof url !== 'string') return '';
+
+    let key = url.trim();
+    if (!key) return '';
+
+    const fragmentIndex = key.indexOf('#');
+    if (fragmentIndex >= 0) key = key.slice(0, fragmentIndex);
+
+    key = key.toLowerCase();
+    key = key.replace(/^https?:\/\//, '');
+    key = key.replace(/^www\./, '');
+    key = key.replace(/\/$/, '');
+    key = key.replace(/\.git$/, '');
+    return key;
+  }
+
+  /**
    * 从书签节点中提取所有GitHub仓库URL
    * @param {Array} bookmarkNodes - 书签节点数组
    * @param {Object} settings - 配置项
@@ -135,8 +158,9 @@ class UrlUtils {
     const uniqueUrls = [];
 
     for (const urlObj of urls) {
-      if (!seen.has(urlObj.url)) {
-        seen.add(urlObj.url);
+      const key = this.repositoryKey(urlObj.url);
+      if (!seen.has(key)) {
+        seen.add(key);
         uniqueUrls.push(urlObj);
       }
     }

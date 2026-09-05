@@ -153,6 +153,24 @@ try {
     }
   });
 
+  console.log('\n=== Gitrieve 仓库身份去重测试 ===');
+  const duplicateRepositoryVariants = [
+    { url: 'https://github.com/chaitin/SafeLine', title: '保留的标题' },
+    { url: 'http://github.com/chaitin/safeline/', title: '协议和尾斜杠变体' },
+    { url: 'https://www.github.com/chaitin/safeline', title: 'www 变体' },
+    { url: 'https://github.com/chaitin/safeline.git', title: '.git 变体' },
+    { url: 'https://github.com/chaitin/safeline#readme', title: '片段变体' }
+  ];
+  const deduplicatedRepositoryVariants = UrlUtils.deduplicateUrls(duplicateRepositoryVariants);
+  assert(
+    deduplicatedRepositoryVariants.length === 1,
+    '按 Gitrieve 的规范化 URL 身份合并同一仓库的所有 URL 变体'
+  );
+  assert(
+    deduplicatedRepositoryVariants[0].title === '保留的标题',
+    '仓库 URL 去重时保留第一次出现的书签'
+  );
+
   console.log('=== 书签处理模拟测试 ===');
 
   chrome.bookmarks.getTree((bookmarkTree) => {
@@ -311,7 +329,12 @@ global.chrome = {
     getTree: (cb) => cb([
       { id: '0', title: '', children: [
         { id: '1', title: 'Vue', url: 'https://github.com/vuejs/vue' },
-        { id: '2', title: 'React', url: 'https://github.com/facebook/react' }
+        { id: '2', title: 'React', url: 'https://github.com/facebook/react' },
+        { id: '3', title: 'SafeLine first', url: 'https://github.com/chaitin/SafeLine' },
+        { id: '4', title: 'SafeLine protocol variant', url: 'http://github.com/chaitin/safeline/' },
+        { id: '5', title: 'SafeLine www variant', url: 'https://www.github.com/chaitin/safeline' },
+        { id: '6', title: 'SafeLine git suffix variant', url: 'https://github.com/chaitin/safeline.git' },
+        { id: '7', title: 'SafeLine fragment variant', url: 'https://github.com/chaitin/safeline#readme' }
       ] }
     ])
   },
@@ -363,6 +386,8 @@ backgroundHandler({ action: 'processBookmarks' }, {}, (resp) => {
   assert(resp.data.yaml.includes('syncOverdueGrace: 1h'), 'background YAML 输出保存的同步逾期宽限时间');
   assert(resp.data.yaml.includes('syncStuckThreshold: 18h'), 'background YAML 输出保存的同步卡住阈值');
   const backgroundJson = JSON.parse(resp.data.json);
+  assert(backgroundJson.repository.length === 3, 'background 按 Gitrieve URL 身份去除重复仓库');
+  assert(backgroundJson.repository.some(repo => repo.name === 'SafeLine first'), 'background 去重保留首次出现的书签标题');
   assert(backgroundJson.githubApiConcurrency === 5, 'background JSON 输出保存的 GitHub API 并发数');
   assert(backgroundJson.githubMinRequestInterval === '500ms', 'background JSON 输出保存的 GitHub API 最小请求间隔');
   assert(backgroundJson.githubLowRemainingThreshold === 75, 'background JSON 输出保存的 GitHub API 低配额阈值');
@@ -372,7 +397,7 @@ backgroundHandler({ action: 'processBookmarks' }, {}, (resp) => {
   assert(backgroundJson.syncOverdueGrace === '1h', 'background JSON 输出保存的同步逾期宽限时间');
   assert(backgroundJson.syncStuckThreshold === '18h', 'background JSON 输出保存的同步卡住阈值');
   const backgroundCrons = backgroundJson.repository.map(repo => repo.cron);
-  assert(new Set(backgroundCrons).size === 2, 'background 每周模式为仓库分配不同分钟槽');
+  assert(new Set(backgroundCrons).size === 3, 'background 每周模式为仓库分配不同分钟槽');
   assert(backgroundCrons.every(expression => {
     const [minute, hour, day, month, weekday] = expression.split(' ');
     return Number(minute) >= 0 && Number(minute) <= 59 &&

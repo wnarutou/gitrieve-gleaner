@@ -98,9 +98,26 @@ function extractGitHubUrls(bookmarkNodes, settings = {}) {
   return urls;
 }
 
+function repositoryKey(url) {
+  if (!url || typeof url !== 'string') return '';
+  let key = url.trim();
+  if (!key) return '';
+  const fragmentIndex = key.indexOf('#');
+  if (fragmentIndex >= 0) key = key.slice(0, fragmentIndex);
+  key = key.toLowerCase();
+  key = key.replace(/^https?:\/\//, '');
+  key = key.replace(/^www\./, '');
+  key = key.replace(/\/$/, '');
+  key = key.replace(/\.git$/, '');
+  return key;
+}
+
 function dedupeUrls(urls) {
   const seen = new Set();
-  return urls.filter(u => seen.has(u.url) ? false : (seen.add(u.url), true));
+  return urls.filter(u => {
+    const key = repositoryKey(u.url);
+    return seen.has(key) ? false : (seen.add(key), true);
+  });
 }
 
 function sanitizeName(name) {
