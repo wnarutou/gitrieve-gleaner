@@ -328,8 +328,16 @@ global.chrome = {
   bookmarks: {
     getTree: (cb) => cb([
       { id: '0', title: '', children: [
-        { id: '1', title: 'Vue', url: 'https://github.com/vuejs/vue' },
-        { id: '2', title: 'React', url: 'https://github.com/facebook/react' },
+        {
+          id: '1',
+          title: 'SivanLaai/rime-pure 【rime 小狼毫\\trime 同文】手机/PC一站式配置【简约皮肤\\拼音搜狗词库】',
+          url: 'https://github.com/SivanLaai/rime-pure'
+        },
+        {
+          id: '2',
+          title: '备份sqlite数据库文件 lichuang/replited Replicate SQLite to every where(S3\\ftp\\webdav\\google drive\\dropboxetc)',
+          url: 'https://github.com/lichuang/replited'
+        },
         { id: '3', title: 'SafeLine first', url: 'https://github.com/chaitin/SafeLine' },
         { id: '4', title: 'SafeLine protocol variant', url: 'http://github.com/chaitin/safeline/' },
         { id: '5', title: 'SafeLine www variant', url: 'https://www.github.com/chaitin/safeline' },
@@ -385,6 +393,8 @@ backgroundHandler({ action: 'processBookmarks' }, {}, (resp) => {
   assert(resp.data.yaml.includes('retryBaseDelay: 3s'), 'background YAML 输出保存的重试基础延迟');
   assert(resp.data.yaml.includes('syncOverdueGrace: 1h'), 'background YAML 输出保存的同步逾期宽限时间');
   assert(resp.data.yaml.includes('syncStuckThreshold: 18h'), 'background YAML 输出保存的同步卡住阈值');
+  assert(resp.data.yaml.includes('小狼毫\\\\trime'), 'background YAML 转义 rime-pure 标题中的反斜杠');
+  assert(resp.data.yaml.includes('S3\\\\ftp\\\\webdav\\\\google drive\\\\dropboxetc'), 'background YAML 转义 replited 标题中的连续多个反斜杠');
   const backgroundJson = JSON.parse(resp.data.json);
   assert(backgroundJson.repository.length === 3, 'background 按 Gitrieve URL 身份去除重复仓库');
   assert(backgroundJson.repository.some(repo => repo.name === 'SafeLine first'), 'background 去重保留首次出现的书签标题');

@@ -125,7 +125,9 @@ function sanitizeName(name) {
 }
 
 function yamlQuote(name) {
-  return /[:\s"'{}\[\],&*?|#<>!=%@`-]/.test(name) ? `"${name.replace(/"/g, '\\"')}"` : name;
+  return /[:\s\\"'{}\[\],&*?|#<>!=%@`-]/.test(name)
+    ? `"${name.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+    : name;
 }
 
 function countBookmarks(tree) {
