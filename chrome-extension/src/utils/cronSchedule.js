@@ -75,13 +75,66 @@
     }
   }
 
-  function shuffle(values, random) {
-    for (let index = values.length - 1; index > 0; index--) {
-      const sample = Math.max(0, Math.min(0.9999999999999999, random()));
-      const swapIndex = Math.floor(sample * (index + 1));
-      [values[index], values[swapIndex]] = [values[swapIndex], values[index]];
+  function normalizeIdentifier(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\/(?:www\.)?/, '')
+      .replace(/^git@([^:]+):/, '$1/')
+      .replace(/\.git\/?$/, '')
+      .replace(/\/+$/, '');
+  }
+
+  function hashString(value) {
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index++) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
     }
-    return values;
+    return hash >>> 0;
+  }
+
+  function compareRecords(first, second) {
+    if (first.key < second.key) return -1;
+    if (first.key > second.key) return 1;
+    if (first.sourceKey < second.sourceKey) return -1;
+    if (first.sourceKey > second.sourceKey) return 1;
+    return first.index - second.index;
+  }
+
+  function allocationScope(mode, settings) {
+    if (mode === 'dailyRange') {
+      return `${mode}:${parseTime(settings.cronRangeStart)}-${parseTime(settings.cronRangeEnd)}`;
+    }
+    return mode;
+  }
+
+  function assignSlots(identifiers, slots, mode, settings) {
+    const loads = Array(slots.length).fill(0);
+    const assigned = Array(identifiers.length);
+    const records = identifiers
+      .map((identifier, index) => ({
+        index,
+        key: normalizeIdentifier(identifier) || `repository-${index}`,
+        sourceKey: String(identifier || '').trim()
+      }))
+      .sort(compareRecords);
+    const scope = allocationScope(mode, settings);
+
+    records.forEach((record, ordinal) => {
+      const targetLoad = Math.floor(ordinal / slots.length);
+      const preferred = hashString(`${scope}|${record.key}`) % slots.length;
+      let slotIndex = preferred;
+
+      while (loads[slotIndex] > targetLoad) {
+        slotIndex = (slotIndex + 1) % slots.length;
+      }
+
+      loads[slotIndex] += 1;
+      assigned[record.index] = slots[slotIndex];
+    });
+
+    return assigned;
   }
 
   function formatDaily(slot) {
@@ -106,9 +159,11 @@
     return formatDaily(slot);
   }
 
-  function generate(count, settings = {}, random = Math.random) {
-    const size = Math.max(0, Math.floor(Number(count) || 0));
-    if (size === 0) return [];
+  function generate(identifiers, settings = {}) {
+    if (!Array.isArray(identifiers)) {
+      throw new TypeError('仓库标识必须是数组');
+    }
+    if (identifiers.length === 0) return [];
 
     const mode = settings.cronMode || 'custom';
     const result = validate(settings);
@@ -117,11 +172,12 @@
     }
     if (mode === 'custom') {
       const expression = String(settings.cronExpression || '').trim() || '0 * * * *';
-      return Array(size).fill(expression);
+      return Array(identifiers.length).fill(expression);
     }
 
-    const slots = shuffle(buildSlots(mode, settings), random);
-    return Array.from({ length: size }, (_, index) => formatSlot(mode, slots[index % slots.length]));
+    const slots = buildSlots(mode, settings);
+    return assignSlots(identifiers, slots, mode, settings)
+      .map(slot => formatSlot(mode, slot));
   }
 
   return { generate, validate, visibleFields };

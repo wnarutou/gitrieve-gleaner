@@ -74,12 +74,12 @@
                         <label for="cron-mode">定时任务模式</label>
                         <select id="cron-mode">
                             <option value="custom">自定义 cron</option>
-                            <option value="daily">每天随机打散</option>
-                            <option value="weekly">每周随机打散</option>
-                            <option value="monthly">每月随机打散（1–28 日）</option>
-                            <option value="dailyRange">每日指定时段随机打散</option>
+                            <option value="daily">每天固定打散</option>
+                            <option value="weekly">每周固定打散</option>
+                            <option value="monthly">每月固定打散（1–28 日）</option>
+                            <option value="dailyRange">每日指定时段固定打散</option>
                         </select>
-                        <p class="help-text">自动模式会在每次生成配置时重新随机；分钟槽足够时，同批仓库不会同时启动</p>
+                        <p class="help-text">自动模式按仓库 URL 固定分配；重复生成或调整书签顺序不会改变对应 cron，分钟槽足够时同批仓库不会同时启动</p>
                     </div>
 
                     <div class="config-item" id="cron-expression-group">

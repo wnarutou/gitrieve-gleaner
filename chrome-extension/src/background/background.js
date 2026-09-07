@@ -244,7 +244,10 @@ async function processBookmarks() {
     const tree = await getBookmarkTree();
     const urls = extractGitHubUrls(tree, settings);
     const unique = dedupeUrls(urls);
-    const cronExpressions = cronScheduleApi.generate(unique.length, settings);
+    const cronExpressions = cronScheduleApi.generate(
+      unique.map(repository => repository.url),
+      settings
+    );
     const config = buildConfig(
       unique.map((url, index) => generateRepoConfig(url, settings, cronExpressions[index])),
       settings

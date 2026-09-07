@@ -166,7 +166,10 @@ class ConfigGenerator {
   static generateFullConfig(githubUrls, settings = {}) {
     const merged = { ...this.DEFAULT_SETTINGS, ...settings };
     merged.server = { ...this.DEFAULT_SETTINGS.server, ...(settings.server || {}) };
-    const cronExpressions = CronScheduleApi.generate(githubUrls.length, merged);
+    const cronExpressions = CronScheduleApi.generate(
+      githubUrls.map(urlObj => urlObj.url),
+      merged
+    );
 
     const config = {
       repository: githubUrls.map((urlObj, index) =>
