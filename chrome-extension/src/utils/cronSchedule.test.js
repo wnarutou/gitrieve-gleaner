@@ -17,12 +17,8 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-function seededRandom(seed) {
-  let state = seed >>> 0;
-  return () => {
-    state = (state * 1664525 + 1013904223) >>> 0;
-    return state / 0x100000000;
-  };
+function repositoryUrls(count) {
+  return Array.from({ length: count }, (_, index) => `https://github.com/example/repo-${index}`);
 }
 
 function parseCron(expression) {
@@ -34,7 +30,7 @@ function parseCron(expression) {
 console.log('=== Cron 自动打散测试 ===');
 
 test('自定义模式为所有仓库保留原 cron', () => {
-  const actual = CronSchedule.generate(3, {
+  const actual = CronSchedule.generate(repositoryUrls(3), {
     cronMode: 'custom',
     cronExpression: '15 3 * * 1'
   });
@@ -47,7 +43,7 @@ test('自定义模式为所有仓库保留原 cron', () => {
 });
 
 test('旧设置中的空 cron 回退到历史默认值', () => {
-  const actual = CronSchedule.generate(2, { cronExpression: '' });
+  const actual = CronSchedule.generate(repositoryUrls(2), { cronExpression: '' });
 
   assert(JSON.stringify(actual) === JSON.stringify([
     '0 * * * *',
@@ -56,7 +52,7 @@ test('旧设置中的空 cron 回退到历史默认值', () => {
 });
 
 test('每天模式在全天分钟槽中无碰撞分配', () => {
-  const actual = CronSchedule.generate(100, { cronMode: 'daily' }, seededRandom(1));
+  const actual = CronSchedule.generate(repositoryUrls(100), { cronMode: 'daily' });
 
   assert(new Set(actual).size === 100, '槽位足够时出现重复 cron');
   actual.forEach(expression => {
@@ -68,7 +64,7 @@ test('每天模式在全天分钟槽中无碰撞分配', () => {
 });
 
 test('每周模式为每个仓库分配星期、小时和分钟', () => {
-  const actual = CronSchedule.generate(100, { cronMode: 'weekly' }, seededRandom(2));
+  const actual = CronSchedule.generate(repositoryUrls(100), { cronMode: 'weekly' });
 
   assert(new Set(actual).size === 100, '每周槽位出现碰撞');
   actual.forEach(expression => {
@@ -81,7 +77,7 @@ test('每周模式为每个仓库分配星期、小时和分钟', () => {
 });
 
 test('每月模式在 1 至 28 日的具体分钟槽中分配', () => {
-  const actual = CronSchedule.generate(100, { cronMode: 'monthly' }, seededRandom(3));
+  const actual = CronSchedule.generate(repositoryUrls(100), { cronMode: 'monthly' });
 
   assert(new Set(actual).size === 100, '每月槽位出现碰撞');
   assert(actual.some(expression => parseCron(expression)[0] !== 0), '没有分配到具体分钟');
@@ -96,11 +92,11 @@ test('每月模式在 1 至 28 日的具体分钟槽中分配', () => {
 });
 
 test('每日时间段支持跨午夜并精确到分钟', () => {
-  const actual = CronSchedule.generate(100, {
+  const actual = CronSchedule.generate(repositoryUrls(100), {
     cronMode: 'dailyRange',
     cronRangeStart: '22:30',
     cronRangeEnd: '01:15'
-  }, seededRandom(4));
+  });
 
   assert(new Set(actual).size === 100, '跨午夜范围内出现槽位碰撞');
   actual.forEach(expression => {
@@ -112,11 +108,11 @@ test('每日时间段支持跨午夜并精确到分钟', () => {
 });
 
 test('仓库多于分钟槽时均衡复用槽位', () => {
-  const actual = CronSchedule.generate(5, {
+  const actual = CronSchedule.generate(repositoryUrls(5), {
     cronMode: 'dailyRange',
     cronRangeStart: '09:00',
     cronRangeEnd: '09:01'
-  }, seededRandom(5));
+  });
   const counts = [...actual.reduce((map, expression) => {
     map.set(expression, (map.get(expression) || 0) + 1);
     return map;
@@ -125,11 +121,43 @@ test('仓库多于分钟槽时均衡复用槽位', () => {
   assert(JSON.stringify(counts) === JSON.stringify([2, 3]), `槽位计数为 ${counts}`);
 });
 
-test('不同随机序列会产生不同分配', () => {
-  const first = CronSchedule.generate(10, { cronMode: 'daily' }, () => 0);
-  const second = CronSchedule.generate(10, { cronMode: 'daily' }, () => 0.999999);
+test('相同仓库重复生成保持相同 cron', () => {
+  const urls = repositoryUrls(10);
+  const first = CronSchedule.generate(urls, { cronMode: 'daily' });
+  const second = CronSchedule.generate(urls, { cronMode: 'daily' });
 
-  assert(JSON.stringify(first) !== JSON.stringify(second), '两次随机分配完全相同');
+  assert(first.length === urls.length, `生成数量为 ${first.length}`);
+  assert(JSON.stringify(first) === JSON.stringify(second), '重复生成的分配发生变化');
+});
+
+test('调整仓库顺序不改变 URL 对应的 cron', () => {
+  const urls = repositoryUrls(10);
+  const reversed = [...urls].reverse();
+  const first = CronSchedule.generate(urls, { cronMode: 'weekly' });
+  const second = CronSchedule.generate(reversed, { cronMode: 'weekly' });
+  const firstByUrl = new Map(urls.map((url, index) => [url, first[index]]));
+  const secondByUrl = new Map(reversed.map((url, index) => [url, second[index]]));
+
+  assert(first.length === urls.length, `生成数量为 ${first.length}`);
+  urls.forEach(url => {
+    assert(firstByUrl.get(url) === secondByUrl.get(url), `${url} 的 cron 发生变化`);
+  });
+});
+
+test('规范化后相同的原始 URL 调整顺序仍保持各自 cron', () => {
+  const urls = [
+    'http://github.com/example/same-repo',
+    'https://github.com/example/same-repo'
+  ];
+  const reversed = [...urls].reverse();
+  const first = CronSchedule.generate(urls, { cronMode: 'daily' });
+  const second = CronSchedule.generate(reversed, { cronMode: 'daily' });
+  const firstByUrl = new Map(urls.map((url, index) => [url, first[index]]));
+  const secondByUrl = new Map(reversed.map((url, index) => [url, second[index]]));
+
+  urls.forEach(url => {
+    assert(firstByUrl.get(url) === secondByUrl.get(url), `${url} 的 cron 发生变化`);
+  });
 });
 
 test('时间段设置拒绝错误时间格式', () => {

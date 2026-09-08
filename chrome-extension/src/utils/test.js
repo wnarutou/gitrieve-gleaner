@@ -275,6 +275,14 @@ try {
         month === '*' && weekday === '*';
     }), 'ConfigGenerator 月度模式输出日、时、分 cron');
 
+    const reversedMonthlyConfig = ConfigGenerator.generateFullConfig(
+      [...uniqueUrls].reverse(),
+      { cronMode: 'monthly' }
+    );
+    const monthlyCronByUrl = new Map(monthlyConfig.repository.map(repo => [repo.url, repo.cron]));
+    assert(reversedMonthlyConfig.repository.every(repo => monthlyCronByUrl.get(repo.url) === repo.cron),
+      'ConfigGenerator 调整仓库顺序后保持 URL 对应的月度 cron');
+
     const yamlDefault = ConfigGenerator.generateYAML(uniqueUrls);
     assert(yamlDefault.includes('server:'), '默认配置也包含 server: 段');
     assert(yamlDefault.includes('  host: 0.0.0.0'), '默认 server.host 为 0.0.0.0');
