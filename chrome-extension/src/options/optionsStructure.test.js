@@ -33,4 +33,15 @@ parentDivOpeningTag('retry-base-delay');
 parentDivOpeningTag('sync-overdue-grace');
 parentDivOpeningTag('sync-stuck-threshold');
 
+assert(html.includes('<span id="extension-version"></span>'), '页脚应提供由运行时填充的版本元素');
+assert(
+  html.includes('href="https://github.com/wnarutou/gitrieve-gleaner"'),
+  '查看文档应直接链接到 gitrieve-gleaner 仓库'
+);
+assert(
+  html.includes('href="https://github.com/wnarutou/gitrieve-gleaner/issues"'),
+  '报告问题应直接链接到 gitrieve-gleaner 的 issues 页面'
+);
+assert(html.includes('<script src="footer.js"></script>'), '选项页应加载页脚初始化脚本');
+
 console.log('选项页字段结构断言通过');
