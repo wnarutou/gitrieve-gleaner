@@ -104,11 +104,7 @@ const elements = {
     testResult: document.getElementById('test-result'),
 
     // 状态消息
-    statusMessage: document.getElementById('status-message'),
-
-    // 链接
-    viewDocs: document.getElementById('view-docs'),
-    reportIssue: document.getElementById('report-issue')
+    statusMessage: document.getElementById('status-message')
 };
 
 // 当前正在编辑的目的地列表（渲染期间的数据源）
@@ -165,18 +161,6 @@ function bindEvents() {
         }
     });
 
-    // 链接
-    elements.viewDocs.addEventListener('click', (e) => {
-        e.preventDefault();
-        // 在新标签页中打开文档
-        chrome.tabs.create({ url: 'https://github.com/wnarutou/gitrieve' });
-    });
-
-    elements.reportIssue.addEventListener('click', (e) => {
-        e.preventDefault();
-        // 在新标签页中打开问题报告页面
-        chrome.tabs.create({ url: 'https://github.com/wnarutou/gitrieve/issues' });
-    });
 }
 
 function updateCronFieldVisibility() {
