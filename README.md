@@ -27,6 +27,7 @@ Gitrieve Gleaner 是一个 Chrome 扩展程序，它可以帮助您：
 - 生成 gitrieve 兼容的 YAML 配置文件
 - 生成 gitrieve 兼容的 JSON 配置文件
 - 支持自定义配置模板
+- 对齐新版 gitrieve 的本地文件存储配置，支持多个目的地；旧 S3 设置需在选项页转换后再导出（见[兼容说明](./chrome-extension/README.md#与新版-gitrieve-的兼容性)）
 
 ### 4. 导出选项
 - 复制 YAML 到剪贴板

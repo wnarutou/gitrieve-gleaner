@@ -44,7 +44,7 @@ class ConfigGenerator {
   }
 
   /**
-   * 默认设置模型（与 options.js / background.js 的 DEFAULT_SETTINGS 保持一致）
+   * 选项页、后台和导出共用的默认设置模型
    */
   static get DEFAULT_SETTINGS() {
     return {
@@ -61,12 +61,7 @@ class ConfigGenerator {
         {
           name: 'localFile',
           type: 'file',
-          path: '/app/repo',
-          endpoint: '',
-          region: '',
-          bucket: '',
-          accessKeyID: '',
-          secretAccessKey: ''
+          path: '/app/repo'
         }
       ],
       downloadReleases: true,
@@ -101,10 +96,29 @@ class ConfigGenerator {
    * @returns {Array} 标准化后的目的地列表
    */
   static resolveDestinations(destinations) {
+    const unsupported = Array.isArray(destinations)
+      ? destinations.find(d => d && d.type !== 'file')
+      : null;
+    if (unsupported) {
+      throw new Error(`存储目的地「${unsupported.name || '未命名'}」使用不支持的类型「${unsupported.type}」。新版 gitrieve 仅支持 file，请在选项页改为本地文件并确认路径，或删除该目的地。`);
+    }
     const valid = Array.isArray(destinations)
-      ? destinations.filter(d => d && typeof d.name === 'string' && d.name.trim() && (d.type === 'file' || d.type === 's3'))
+      ? destinations.filter(d => d && typeof d.name === 'string' && d.name.trim() && d.type === 'file')
       : [];
     return valid.length > 0 ? valid : [{ name: 'localFile', type: 'file', path: '/app/repo' }];
+  }
+
+  // 只合并设置，不修改已保存数据；旧存储需要用户在选项页明确转换。
+  static resolveSettings(settings = {}) {
+    const defaults = this.DEFAULT_SETTINGS;
+    const merged = { ...defaults, ...settings };
+    merged.server = { ...defaults.server, ...(settings.server || {}) };
+    if (settings.storageDestinations === undefined && settings.storageBackend) {
+      merged.storageDestinations = settings.storageBackend === 'localFile'
+        ? defaults.storageDestinations
+        : [{ name: settings.storageBackend, type: settings.storageBackend }];
+    }
+    return merged;
   }
 
   /**
@@ -152,9 +166,11 @@ class ConfigGenerator {
   }
 
   static yamlQuote(name) {
-    return /[:\s\\"'{}[\]\],&*?|#<>!=%@`-]/.test(name)
-      ? `"${name.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
-      : name;
+    const value = String(name);
+    // JSON 双引号转义兼容 YAML，同时保护布尔值、数字等易被误判的字符串。
+    const plain = /^[a-zA-Z0-9_/][a-zA-Z0-9_./]*$/.test(value);
+    const reserved = /^(?:null|true|false|yes|no|on|off|y|n)$/i.test(value);
+    return plain && !reserved && !Number.isFinite(Number(value)) ? value : JSON.stringify(value);
   }
 
   /**
@@ -164,8 +180,8 @@ class ConfigGenerator {
    * @returns {object} 完整的配置对象
    */
   static generateFullConfig(githubUrls, settings = {}) {
-    const merged = { ...this.DEFAULT_SETTINGS, ...settings };
-    merged.server = { ...this.DEFAULT_SETTINGS.server, ...(settings.server || {}) };
+    const merged = this.resolveSettings(settings);
+    const destinations = this.resolveDestinations(merged.storageDestinations);
     const cronExpressions = CronScheduleApi.generate(
       githubUrls.map(urlObj => urlObj.url),
       merged
@@ -175,20 +191,7 @@ class ConfigGenerator {
       repository: githubUrls.map((urlObj, index) =>
         this.generateRepoConfig(urlObj.url, urlObj.title, merged, cronExpressions[index])
       ),
-      storage: this.resolveDestinations(merged.storageDestinations).map(d => {
-        const base = { name: d.name, type: d.type };
-        if (d.type === 's3') {
-          return {
-            ...base,
-            endpoint: d.endpoint || '',
-            region: d.region || '',
-            bucket: d.bucket || '',
-            accessKeyID: d.accessKeyID || '',
-            secretAccessKey: d.secretAccessKey || ''
-          };
-        }
-        return { ...base, path: d.path || '/app/repo' };
-      }),
+      storage: destinations.map(d => ({ name: d.name, type: 'file', path: d.path || '/app/repo' })),
       githubToken: merged.githubToken,
       githubApiConcurrency: merged.githubApiConcurrency,
       githubMinRequestInterval: merged.githubMinRequestInterval,
@@ -244,29 +247,14 @@ class ConfigGenerator {
         yamlLines.push('  - name: ' + this.yamlQuote(storage.name));
         yamlLines.push('    type: ' + storage.type);
         if (storage.path) {
-          yamlLines.push('    path: ' + storage.path);
-        }
-        if (storage.endpoint) {
-          yamlLines.push('    endpoint: ' + storage.endpoint);
-        }
-        if (storage.region) {
-          yamlLines.push('    region: ' + storage.region);
-        }
-        if (storage.bucket) {
-          yamlLines.push('    bucket: ' + storage.bucket);
-        }
-        if (storage.accessKeyID) {
-          yamlLines.push('    accessKeyID: ' + storage.accessKeyID);
-        }
-        if (storage.secretAccessKey) {
-          yamlLines.push('    secretAccessKey: ' + storage.secretAccessKey);
+          yamlLines.push('    path: ' + this.yamlQuote(storage.path));
         }
         yamlLines.push('');
       });
     }
 
     // 添加全局配置
-    yamlLines.push('githubToken: ' + config.githubToken);
+    yamlLines.push('githubToken: ' + this.yamlQuote(config.githubToken));
     yamlLines.push('githubApiConcurrency: ' + config.githubApiConcurrency);
     yamlLines.push('githubMinRequestInterval: ' + config.githubMinRequestInterval);
     yamlLines.push('githubLowRemainingThreshold: ' + config.githubLowRemainingThreshold);
@@ -282,11 +270,11 @@ class ConfigGenerator {
     // 添加server配置
     const server = config.server || this.DEFAULT_CONFIG.server;
     yamlLines.push('server:');
-    yamlLines.push('  host: ' + server.host);
-    yamlLines.push('  port: "' + server.port + '"');
-    yamlLines.push('  dbPath: ' + server.dbPath);
+    yamlLines.push('  host: ' + this.yamlQuote(server.host));
+    yamlLines.push('  port: ' + JSON.stringify(String(server.port)));
+    yamlLines.push('  dbPath: ' + this.yamlQuote(server.dbPath));
     yamlLines.push('  authEnabled: ' + (server.authEnabled ? 'true' : 'false'));
-    yamlLines.push('  authToken: "' + String(server.authToken).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"');
+    yamlLines.push('  authToken: ' + JSON.stringify(String(server.authToken)));
 
     return yamlLines.join('\n');
   }
@@ -317,4 +305,7 @@ class ConfigGenerator {
 // 导出供其他模块使用
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = ConfigGenerator;
+}
+if (typeof globalThis !== 'undefined') {
+  globalThis.ConfigGenerator = ConfigGenerator;
 }
