@@ -197,21 +197,13 @@ try {
     console.log('\n生成的JSON配置:');
     console.log(jsonConfig);
 
-    console.log('\n=== 配置生成断言（server 段 / s3 / 自定义设置）===');
+    console.log('\n=== 配置生成断言（server 段 / 多本地目的地 / 自定义设置）===');
 
     const customSettings = {
       cronExpression: '0 6 * * *',
       storageDestinations: [
         { name: 'archive-local', type: 'file', path: '/data/repos' },
-        {
-          name: 'public-s3',
-          type: 's3',
-          endpoint: 's3.example.com',
-          region: 'us-east-1',
-          bucket: 'my-bucket',
-          accessKeyID: 'AKIAEXAMPLE',
-          secretAccessKey: 'secret-key'
-        }
+        { name: 'second-local', type: 'file', path: '/backup/repos' }
       ],
       downloadReleases: false,
       githubApiConcurrency: 7,
@@ -232,15 +224,13 @@ try {
     assert(yamlCustom.includes('  authEnabled: true'), 'YAML server.authEnabled 小写 true');
     assert(yamlCustom.includes('  authToken: "tok\\"en"'), 'YAML server.authToken 引号转义');
     assert(yamlCustom.includes('cron: "0 6 * * *"'), '自定义 cron 生效');
-    // 目的地名称含连字符（archive-local/public-s3），yamlQuote 会为其加引号
-    assert(yamlCustom.includes('    storage:\n      - "archive-local"\n      - "public-s3"'), '仓库条目引用全部目的地');
+    // 目的地名称含连字符（archive-local/second-local），yamlQuote 会为其加引号
+    assert(yamlCustom.includes('    storage:\n      - "archive-local"\n      - "second-local"'), '仓库条目引用全部目的地');
     assert(yamlCustom.includes('  - name: "archive-local"'), 'storage 段包含本地目的地');
     assert(yamlCustom.includes('    type: file'), 'storage 段 file 类型');
     assert(yamlCustom.includes('    path: /data/repos'), '本地路径生效');
-    assert(yamlCustom.includes('  - name: "public-s3"'), 'storage 段包含 s3 目的地');
-    assert(yamlCustom.includes('    type: s3'), 'storage 段 s3 类型');
-    assert(yamlCustom.includes('    endpoint: s3.example.com'), 'storage 段 endpoint');
-    assert(yamlCustom.includes('    bucket: my-bucket'), 'storage 段 bucket');
+    assert(yamlCustom.includes('    path: /backup/repos'), '第二个本地路径生效');
+    assert(yamlCustom.includes('  - name: "second-local"'), 'storage 段包含第二个本地目的地');
     assert(yamlCustom.includes('downloadReleases: False'), 'downloadReleases=false 生效');
     assert(yamlCustom.includes('githubApiConcurrency: 7'), 'YAML 输出自定义 GitHub API 并发数');
     assert(yamlCustom.includes('githubMinRequestInterval: 750ms'), 'YAML 输出自定义 GitHub API 最小请求间隔');
@@ -326,6 +316,7 @@ try {
 
 } catch (error) {
   console.error('测试过程中出现错误:', error);
+  process.exitCode = 1;
 }
 
 console.log('\n=== background.js 冒烟测试 ===');
@@ -360,7 +351,7 @@ global.chrome = {
         ...defaults,
         storageDestinations: [
           { name: 'archive-local', type: 'file', path: '/data/repos' },
-          { name: 'public-s3', type: 's3', endpoint: 's3.example.com', region: 'us-east-1', bucket: 'my-bucket', accessKeyID: 'AKIA', secretAccessKey: 'sk' }
+          { name: 'second-local', type: 'file', path: '/backup/repos' }
         ],
         githubApiConcurrency: 5,
         githubMinRequestInterval: '500ms',
@@ -371,7 +362,7 @@ global.chrome = {
         syncOverdueGrace: '1h',
         syncStuckThreshold: '18h',
         cronMode: 'weekly',
-        server: { ...defaults.server, port: '9000', authEnabled: true }
+        server: { port: '9000', authEnabled: true }
       })
     }
   },
@@ -389,8 +380,8 @@ backgroundHandler({ action: 'processBookmarks' }, {}, (resp) => {
   assert(resp.data.yaml.includes('server:'), 'background YAML 包含 server:');
   assert(resp.data.yaml.includes('  port: "9000"'), 'background 读取 storage 中的 server.port');
   assert(resp.data.yaml.includes('  authEnabled: true'), 'background server.authEnabled 输出');
-  assert(resp.data.yaml.includes('    storage:\n      - "archive-local"\n      - "public-s3"'), 'background 仓库条目引用全部目的地');
-  assert(resp.data.yaml.includes('  - name: "public-s3"'), 'background storage 段包含 s3 目的地');
+  assert(resp.data.yaml.includes('    storage:\n      - "archive-local"\n      - "second-local"'), 'background 仓库条目引用全部目的地');
+  assert(resp.data.yaml.includes('  - name: "second-local"'), 'background storage 段包含第二个本地目的地');
   assert((resp.data.yaml.match(/^storage:/gm) || []).length === 1, 'background YAML 仅一个 storage: 头');
   assert(resp.data.json.includes('"server"'), 'background JSON 包含 server 段');
   assert(resp.data.yaml.includes('githubApiConcurrency: 5'), 'background YAML 输出保存的 GitHub API 并发数');

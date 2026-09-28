@@ -2,54 +2,7 @@
  * Gitrieve书签提取器 - 选项页面逻辑
  */
 
-// 与 src/utils/configGenerator.js 和 src/background/background.js 的 DEFAULT_SETTINGS 保持一致
-// 默认设置
-const DEFAULT_SETTINGS = {
-    filterGithub: true,
-    removeFragments: true,
-    normalizeUrls: true,
-    defaultFormat: 'yaml',
-    filenameTemplate: 'gitrieve-config-{date}',
-    cronMode: 'custom',
-    cronExpression: '0 * * * *',
-    cronRangeStart: '09:00',
-    cronRangeEnd: '17:00',
-    storageDestinations: [
-        {
-            name: 'localFile',
-            type: 'file',
-            path: '/app/repo',
-            endpoint: '',
-            region: '',
-            bucket: '',
-            accessKeyID: '',
-            secretAccessKey: ''
-        }
-    ],
-    downloadReleases: true,
-    downloadIssues: true,
-    downloadWiki: true,
-    downloadDiscussion: true,
-    githubToken: 'your_github_token_here',
-    githubApiConcurrency: 2,
-    githubMinRequestInterval: '200ms',
-    githubLowRemainingThreshold: 100,
-    githubScheduleJitter: '30s',
-    retryMaxCount: 3,
-    retryBaseDelay: '5s',
-    syncOverdueGrace: '30m',
-    syncStuckThreshold: '24h',
-    concurrencyNum: 6,
-    releaseSizeLimit: 300000000,
-    releaseNumLimit: 3,
-    server: {
-        host: '0.0.0.0',
-        port: '8080',
-        dbPath: '/app/data/gitrieve.db',
-        authEnabled: false,
-        authToken: ''
-    }
-};
+const DEFAULT_SETTINGS = ConfigGenerator.DEFAULT_SETTINGS;
 
 // DOM元素引用
 const elements = {
@@ -69,6 +22,7 @@ const elements = {
     cronRangeStart: document.getElementById('cron-range-start'),
     cronRangeEnd: document.getElementById('cron-range-end'),
     storageDestinations: document.getElementById('storage-destinations'),
+    storageCompatibilityNotice: document.getElementById('storage-compatibility-notice'),
     addDestinationBtn: document.getElementById('add-destination-btn'),
     downloadReleases: document.getElementById('download-releases'),
     downloadIssues: document.getElementById('download-issues'),
@@ -144,7 +98,7 @@ function bindEvents() {
     // 添加存储目的地
     elements.addDestinationBtn.addEventListener('click', () => {
         destinationState = collectDestinations();
-        destinationState.push({ name: '', type: 'file', path: '/app/repo', endpoint: '', region: '', bucket: '', accessKeyID: '', secretAccessKey: '' });
+        destinationState.push({ name: '', type: 'file', path: '/app/repo' });
         renderDestinations();
     });
 
@@ -175,27 +129,9 @@ function updateCronFieldVisibility() {
 function resolveDestinations(destinations) {
     // UI 变体故意不检查 name.trim()：编辑中的空名称卡片需保留以便继续填写
     const valid = Array.isArray(destinations)
-        ? destinations.filter(d => d && typeof d.name === 'string' && (d.type === 'file' || d.type === 's3'))
+        ? destinations.filter(d => d && typeof d.name === 'string' && typeof d.type === 'string')
         : [];
     return valid.length > 0 ? valid : [{ name: 'localFile', type: 'file', path: '/app/repo' }];
-}
-
-/**
- * 将旧扁平存储字段迁移为 storageDestinations 数组
- */
-function migrateLegacyStorage(settings) {
-    if (settings.storageBackend === 's3') {
-        return [{
-            name: 's3',
-            type: 's3',
-            endpoint: settings.s3Endpoint || '',
-            region: settings.s3Region || '',
-            bucket: settings.s3Bucket || '',
-            accessKeyID: settings.s3AccessKeyID || '',
-            secretAccessKey: settings.s3SecretAccessKey || ''
-        }];
-    }
-    return [{ name: 'localFile', type: 'file', path: '/app/repo' }];
 }
 
 /**
@@ -206,6 +142,7 @@ function renderDestinations() {
     container.innerHTML = '';
     const list = resolveDestinations(destinationState);
     destinationState = list;
+    elements.storageCompatibilityNotice.classList.toggle('hidden', !list.some(d => d.type !== 'file'));
     list.forEach((dest, index) => {
         container.appendChild(buildDestinationCard(dest, index, list.length));
     });
@@ -246,15 +183,19 @@ function buildDestinationCard(dest, index, total) {
     const optFile = document.createElement('option');
     optFile.value = 'file';
     optFile.textContent = '本地文件';
-    const optS3 = document.createElement('option');
-    optS3.value = 's3';
-    optS3.textContent = 'S3兼容存储';
     typeSelect.appendChild(optFile);
-    typeSelect.appendChild(optS3);
-    typeSelect.value = dest.type === 's3' ? 's3' : 'file';
+    if (dest.type !== 'file') {
+        const unsupported = document.createElement('option');
+        unsupported.value = dest.type;
+        unsupported.textContent = `${dest.type}（已不支持，请转换或删除）`;
+        unsupported.disabled = true;
+        typeSelect.appendChild(unsupported);
+    }
+    typeSelect.value = dest.type;
     typeSelect.addEventListener('change', () => {
         destinationState = collectDestinations();
         destinationState[index].type = typeSelect.value;
+        destinationState[index].path = ''; // 转换旧存储时由用户明确填写新路径
         renderDestinations();
     });
     typeItem.appendChild(typeLabel);
@@ -276,15 +217,8 @@ function buildDestinationCard(dest, index, total) {
 
     card.appendChild(row);
 
-    // 类型专属字段
-    if (typeSelect.value === 's3') {
-        card.appendChild(buildTextField(`dest-endpoint-${index}`, 'Endpoint', dest.endpoint || '', 'S3 兼容存储 endpoint（如 s3.us-west-000.backblazeb2.com）'));
-        card.appendChild(buildTextField(`dest-region-${index}`, 'Region', dest.region || ''));
-        card.appendChild(buildTextField(`dest-bucket-${index}`, 'Bucket', dest.bucket || ''));
-        card.appendChild(buildTextField(`dest-access-key-${index}`, 'Access Key ID', dest.accessKeyID || ''));
-        card.appendChild(buildPasswordField(`dest-secret-key-${index}`, 'Secret Access Key', dest.secretAccessKey || '', '此密钥通过 chrome.storage.sync 同步，并会嵌入导出的配置中'));
-    } else {
-        card.appendChild(buildTextField(`dest-path-${index}`, '路径', dest.path || '/app/repo', '本地归档目录路径'));
+    if (dest.type === 'file') {
+        card.appendChild(buildTextField(`dest-path-${index}`, '路径', dest.path ?? '/app/repo', 'gitrieve 运行环境中的归档目录路径'));
     }
 
     return card;
@@ -315,30 +249,6 @@ function buildTextField(id, labelText, value, help) {
 }
 
 /**
- * 构建密码输入项
- */
-function buildPasswordField(id, labelText, value, help) {
-    const item = document.createElement('div');
-    item.className = 'config-item';
-    const label = document.createElement('label');
-    label.htmlFor = id;
-    label.textContent = labelText;
-    const input = document.createElement('input');
-    input.type = 'password';
-    input.id = id;
-    input.value = value;
-    item.appendChild(label);
-    item.appendChild(input);
-    if (help) {
-        const helpEl = document.createElement('p');
-        helpEl.className = 'help-text';
-        helpEl.textContent = help;
-        item.appendChild(helpEl);
-    }
-    return item;
-}
-
-/**
  * 从 DOM 卡片收集目的地列表
  */
 function collectDestinations() {
@@ -354,12 +264,7 @@ function collectDestinations() {
         list.push({
             name,
             type,
-            path: read(`#dest-path-${index}`, '/app/repo'),
-            endpoint: read(`#dest-endpoint-${index}`),
-            region: read(`#dest-region-${index}`),
-            bucket: read(`#dest-bucket-${index}`),
-            accessKeyID: read(`#dest-access-key-${index}`),
-            secretAccessKey: read(`#dest-secret-key-${index}`)
+            path: read(`#dest-path-${index}`)
         });
     });
     return list;
@@ -384,9 +289,10 @@ function validateDestinations(list) {
         } else {
             names.add(d.name);
         }
-        if (d.type === 's3') {
-            if (!d.endpoint) errors.push(`${label}（${d.name || '未命名'}）：Endpoint 必填`);
-            if (!d.bucket) errors.push(`${label}（${d.name || '未命名'}）：Bucket 必填`);
+        if (d.type !== 'file') {
+            errors.push(`${label}（${d.name || '未命名'}）：新版 gitrieve 仅支持 file，请转换为本地文件并填写路径，或删除`);
+        } else if (!d.path) {
+            errors.push(`${label}（${d.name || '未命名'}）：路径必填`);
         } else if (d.type === 'file' && !d.path) {
             errors.push(`${label}（${d.name || '未命名'}）：路径必填`);
         }
@@ -399,7 +305,7 @@ function validateDestinations(list) {
  */
 async function loadSettings() {
     try {
-        const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
+        const settings = ConfigGenerator.resolveSettings(await chrome.storage.sync.get(null));
 
         // 应用设置到UI
         elements.filterGithub.checked = settings.filterGithub;
@@ -412,14 +318,7 @@ async function loadSettings() {
         elements.cronRangeStart.value = settings.cronRangeStart;
         elements.cronRangeEnd.value = settings.cronRangeEnd;
         updateCronFieldVisibility();
-        // 存储目的地：迁移旧扁平字段或读取数组
-        if (settings.storageBackend !== undefined && settings.storageDestinations === undefined) {
-            destinationState = migrateLegacyStorage(settings);
-            await chrome.storage.sync.set({ storageDestinations: destinationState });
-            await chrome.storage.sync.remove(LEGACY_STORAGE_KEYS);
-        } else {
-            destinationState = resolveDestinations(settings.storageDestinations);
-        }
+        destinationState = resolveDestinations(settings.storageDestinations);
         renderDestinations();
         elements.downloadReleases.checked = settings.downloadReleases;
         elements.downloadIssues.checked = settings.downloadIssues;
@@ -443,7 +342,7 @@ async function loadSettings() {
         elements.serverAuthEnabled.checked = settings.server.authEnabled;
         elements.serverAuthToken.value = settings.server.authToken;
 
-        console.log('设置已加载:', settings);
+        console.log('设置已加载');
     } catch (error) {
         console.error('加载设置失败:', error);
         showStatusMessage('加载设置失败', true);
@@ -524,8 +423,9 @@ async function saveSettings() {
         };
 
         await chrome.storage.sync.set(settings);
+        await chrome.storage.sync.remove(LEGACY_STORAGE_KEYS);
         showStatusMessage('设置已保存', false);
-        console.log('设置已保存:', settings);
+        console.log('设置已保存');
     } catch (error) {
         console.error('保存设置失败:', error);
         showStatusMessage('保存设置失败', true);

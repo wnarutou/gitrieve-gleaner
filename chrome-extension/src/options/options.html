@@ -102,6 +102,8 @@
                     <div class="config-item">
                         <label>存储目的地</label>
                         <p class="help-text">gitrieve 会将数据归档到以下目的地，每个仓库条目引用全部目的地。名称必填且唯一，导出后作为配置中的 name 字段。</p>
+                        <p class="help-text">支持多个本地文件目的地；路径对应 gitrieve 的运行环境。</p>
+                        <p id="storage-compatibility-notice" class="help-text hidden" role="alert">检测到旧版存储类型。新版 gitrieve 仅支持本地文件；请转换并填写新路径，或删除不支持的目的地后保存。转换前无法导出配置，原设置不会自动更改。</p>
                         <div id="storage-destinations"></div>
                         <button type="button" id="add-destination-btn" class="btn btn-secondary btn-small">＋ 添加目的地</button>
                     </div>
@@ -277,6 +279,7 @@
 
     <script src="../utils/urlUtils.js"></script>
     <script src="../utils/cronSchedule.js"></script>
+    <script src="../utils/configGenerator.js"></script>
     <script src="../utils/settingsValidation.js"></script>
     <script src="footer.js"></script>
     <script src="options.js"></script>

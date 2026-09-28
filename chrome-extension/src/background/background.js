@@ -3,62 +3,11 @@
  */
 
 if (typeof importScripts === 'function') {
-  importScripts('../utils/cronSchedule.js');
+  importScripts('../utils/cronSchedule.js', '../utils/configGenerator.js');
 }
-const cronScheduleApi = typeof globalThis !== 'undefined' && globalThis.CronSchedule
-  ? globalThis.CronSchedule
-  : require('../utils/cronSchedule.js');
+const configGeneratorApi = globalThis.ConfigGenerator || require('../utils/configGenerator.js');
 
 const GITHUB_REPO_RE = /^https?:\/\/(www\.)?github\.com\/[a-zA-Z0-9\-_.]+\/[a-zA-Z0-9\-_.]+(\/)?$/;
-
-// 与 src/options/options.js 和 src/utils/configGenerator.js 的 DEFAULT_SETTINGS 保持一致
-const DEFAULT_SETTINGS = {
-  filterGithub: true,
-  removeFragments: true,
-  normalizeUrls: true,
-  defaultFormat: 'yaml',
-  filenameTemplate: 'gitrieve-config-{date}',
-  cronMode: 'custom',
-  cronExpression: '0 * * * *',
-  cronRangeStart: '09:00',
-  cronRangeEnd: '17:00',
-  storageDestinations: [
-    {
-      name: 'localFile',
-      type: 'file',
-      path: '/app/repo',
-      endpoint: '',
-      region: '',
-      bucket: '',
-      accessKeyID: '',
-      secretAccessKey: ''
-    }
-  ],
-  downloadReleases: true,
-  downloadIssues: true,
-  downloadWiki: true,
-  downloadDiscussion: true,
-  githubToken: 'your_github_token_here',
-  githubApiConcurrency: 2,
-  githubMinRequestInterval: '200ms',
-  githubLowRemainingThreshold: 100,
-  githubScheduleJitter: '30s',
-  retryMaxCount: 3,
-  retryBaseDelay: '5s',
-  syncOverdueGrace: '30m',
-  syncStuckThreshold: '24h',
-  concurrencyNum: 6,
-  releaseSizeLimit: 300000000,
-  releaseNumLimit: 3,
-  server: { host: '0.0.0.0', port: '8080', dbPath: '/app/data/gitrieve.db', authEnabled: false, authToken: '' }
-};
-
-function resolveDestinations(destinations) {
-  const valid = Array.isArray(destinations)
-    ? destinations.filter(d => d && typeof d.name === 'string' && d.name.trim() && (d.type === 'file' || d.type === 's3'))
-    : [];
-  return valid.length > 0 ? valid : [{ name: 'localFile', type: 'file', path: '/app/repo' }];
-}
 
 function cleanUrl(url, settings = {}) {
   if (!url || typeof url !== 'string') return '';
@@ -120,129 +69,11 @@ function dedupeUrls(urls) {
   });
 }
 
-function sanitizeName(name) {
-  return name.replace(/[\x00-\x1f\x7f:{}[\],&*?|#<>!=%@`]/g, '').trim();
-}
-
-function yamlQuote(name) {
-  return /[:\s\\"'{}\[\],&*?|#<>!=%@`-]/.test(name)
-    ? `"${name.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
-    : name;
-}
-
 function countBookmarks(tree) {
   let n = 0;
   function walk(node) { if (node.url) n++; if (node.children) node.children.forEach(walk); }
   if (tree && tree.length) tree.forEach(walk);
   return n;
-}
-
-function generateRepoConfig(urlObj, settings = {}, cronExpression = null) {
-  const parts = urlObj.url.split('/');
-  const idx = parts.findIndex(p => p.includes('github.com'));
-  const owner = parts[idx + 1];
-  const repo = parts[idx + 2];
-  const destinations = resolveDestinations(settings.storageDestinations);
-  return {
-    name: sanitizeName(urlObj.title || repo),
-    url: `github.com/${owner}/${repo}`,
-    cron: cronExpression || settings.cronExpression || '0 * * * *',
-    storage: destinations.map(d => d.name),
-    useCache: true,
-    allBranches: true,
-    depth: 0,
-    downloadReleases: settings.downloadReleases !== false,
-    downloadIssues: settings.downloadIssues !== false,
-    downloadWiki: settings.downloadWiki !== false,
-    downloadDiscussion: settings.downloadDiscussion !== false
-  };
-}
-
-function buildStorage(settings) {
-  return resolveDestinations(settings.storageDestinations).map(d => {
-    const base = { name: d.name, type: d.type };
-    if (d.type === 's3') {
-      return {
-        ...base,
-        endpoint: d.endpoint || '',
-        region: d.region || '',
-        bucket: d.bucket || '',
-        accessKeyID: d.accessKeyID || '',
-        secretAccessKey: d.secretAccessKey || ''
-      };
-    }
-    return { ...base, path: d.path || '/app/repo' };
-  });
-}
-
-function buildConfig(repos, settings) {
-  return {
-    repository: repos,
-    storage: buildStorage(settings),
-    githubToken: settings.githubToken,
-    githubApiConcurrency: settings.githubApiConcurrency,
-    githubMinRequestInterval: settings.githubMinRequestInterval,
-    githubLowRemainingThreshold: settings.githubLowRemainingThreshold,
-    githubScheduleJitter: settings.githubScheduleJitter,
-    retryMaxCount: settings.retryMaxCount,
-    retryBaseDelay: settings.retryBaseDelay,
-    syncOverdueGrace: settings.syncOverdueGrace,
-    syncStuckThreshold: settings.syncStuckThreshold,
-    cocurrencyNum: settings.concurrencyNum,
-    releaseSizeLimit: settings.releaseSizeLimit,
-    releaseNumLimit: settings.releaseNumLimit,
-    server: { ...settings.server }
-  };
-}
-
-function toYAML(config) {
-  const lines = ['repository:'];
-  config.repository.forEach(r => {
-    lines.push(`  - name: ${yamlQuote(r.name)}`, `    url: ${r.url}`, `    cron: "${r.cron}"`, '    storage:');
-    r.storage.forEach(s => lines.push(`      - ${yamlQuote(s)}`));
-    lines.push(
-      `    useCache: ${r.useCache ? 'True' : 'False'}`,
-      `    allBranches: ${r.allBranches ? 'True' : 'False'}`,
-      `    depth: ${r.depth}`,
-      `    downloadReleases: ${r.downloadReleases ? 'True' : 'False'}`,
-      `    downloadIssues: ${r.downloadIssues ? 'True' : 'False'}`,
-      `    downloadWiki: ${r.downloadWiki ? 'True' : 'False'}`,
-      `    downloadDiscussion: ${r.downloadDiscussion ? 'True' : 'False'}`,
-      ''
-    );
-  });
-  lines.push('storage:');
-  config.storage.forEach(s => {
-    lines.push(`  - name: ${yamlQuote(s.name)}`, `    type: ${s.type}`);
-    if (s.path) lines.push(`    path: ${s.path}`);
-    if (s.endpoint) lines.push(`    endpoint: ${s.endpoint}`);
-    if (s.region) lines.push(`    region: ${s.region}`);
-    if (s.bucket) lines.push(`    bucket: ${s.bucket}`);
-    if (s.accessKeyID) lines.push(`    accessKeyID: ${s.accessKeyID}`);
-    if (s.secretAccessKey) lines.push(`    secretAccessKey: ${s.secretAccessKey}`);
-    lines.push('');
-  });
-  lines.push(
-    `githubToken: ${config.githubToken}`,
-    `githubApiConcurrency: ${config.githubApiConcurrency}`,
-    `githubMinRequestInterval: ${config.githubMinRequestInterval}`,
-    `githubLowRemainingThreshold: ${config.githubLowRemainingThreshold}`,
-    `githubScheduleJitter: ${config.githubScheduleJitter}`,
-    `retryMaxCount: ${config.retryMaxCount}`,
-    `retryBaseDelay: ${config.retryBaseDelay}`,
-    `syncOverdueGrace: ${config.syncOverdueGrace}`,
-    `syncStuckThreshold: ${config.syncStuckThreshold}`,
-    `cocurrencyNum: ${config.cocurrencyNum}`,
-    `releaseSizeLimit: ${config.releaseSizeLimit}`,
-    `releaseNumLimit: ${config.releaseNumLimit}`,
-    'server:',
-    `  host: ${config.server.host}`,
-    `  port: "${config.server.port}"`,
-    `  dbPath: ${config.server.dbPath}`,
-    `  authEnabled: ${config.server.authEnabled ? 'true' : 'false'}`,
-    `  authToken: "${String(config.server.authToken).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
-  );
-  return lines.join('\n');
 }
 
 function getBookmarkTree() {
@@ -256,23 +87,15 @@ function getBookmarkTree() {
 
 async function processBookmarks() {
   try {
-    const settings = await chrome.storage.sync.get(DEFAULT_SETTINGS);
-    settings.server = { ...DEFAULT_SETTINGS.server, ...(settings.server || {}) };
+    const settings = await chrome.storage.sync.get(null);
     const tree = await getBookmarkTree();
     const urls = extractGitHubUrls(tree, settings);
     const unique = dedupeUrls(urls);
-    const cronExpressions = cronScheduleApi.generate(
-      unique.map(repository => repository.url),
-      settings
-    );
-    const config = buildConfig(
-      unique.map((url, index) => generateRepoConfig(url, settings, cronExpressions[index])),
-      settings
-    );
+    const config = configGeneratorApi.generateFullConfig(unique, settings);
     return {
       success: true,
       data: {
-        yaml: toYAML(config),
+        yaml: configGeneratorApi.toYAML(config),
         json: JSON.stringify(config, null, 2),
         urls: unique,
         stats: { totalBookmarks: countBookmarks(tree), githubUrlsFound: urls.length, uniqueUrls: unique.length }
