@@ -214,13 +214,14 @@ try {
       retryBaseDelay: '2s',
       syncOverdueGrace: '45m',
       syncStuckThreshold: '12h',
-      server: { host: '127.0.0.1', port: '9000', dbPath: 'gitrieve.db', authEnabled: true, authToken: 'tok"en' }
+      server: { host: '127.0.0.1', port: '9000', dbPath: 'gitrieve.db', logRetentionMonths: 6, authEnabled: true, authToken: 'tok"en' }
     };
 
     const yamlCustom = ConfigGenerator.generateYAML(uniqueUrls, customSettings);
     assert(yamlCustom.includes('server:'), 'YAML 包含 server: 段');
     assert(yamlCustom.includes('  host: 127.0.0.1'), 'YAML server.host 生效');
     assert(yamlCustom.includes('  port: "9000"'), 'YAML server.port 带引号');
+    assert(yamlCustom.includes('  logRetentionMonths: 6'), 'YAML server.logRetentionMonths 生效');
     assert(yamlCustom.includes('  authEnabled: true'), 'YAML server.authEnabled 小写 true');
     assert(yamlCustom.includes('  authToken: "tok\\"en"'), 'YAML server.authToken 引号转义');
     assert(yamlCustom.includes('cron: "0 6 * * *"'), '自定义 cron 生效');
@@ -245,6 +246,7 @@ try {
     assert(jsonCustom.includes('"server"'), 'JSON 包含 server 段');
     assert(jsonCustom.includes('"cocurrencyNum": 6'), 'JSON 输出键为 cocurrencyNum');
     const parsedJsonCustom = JSON.parse(jsonCustom);
+    assert(parsedJsonCustom.server.logRetentionMonths === 6, 'JSON 输出自定义日志保留月数');
     assert(parsedJsonCustom.githubApiConcurrency === 7, 'JSON 输出自定义 GitHub API 并发数');
     assert(parsedJsonCustom.githubMinRequestInterval === '750ms', 'JSON 输出自定义 GitHub API 最小请求间隔');
     assert(parsedJsonCustom.githubLowRemainingThreshold === 42, 'JSON 输出自定义 GitHub API 低配额阈值');
@@ -277,6 +279,7 @@ try {
     assert(yamlDefault.includes('server:'), '默认配置也包含 server: 段');
     assert(yamlDefault.includes('  host: 0.0.0.0'), '默认 server.host 为 0.0.0.0');
     assert(yamlDefault.includes('  port: "8080"'), '默认 server.port 为 "8080"');
+    assert(yamlDefault.includes('  logRetentionMonths: 2'), '默认日志保留月数与 gitrieve 一致');
     assert(yamlDefault.includes('  - name: localFile'), '默认 storage 段含本地目的地');
     assert(yamlDefault.includes('    path: /app/repo'), '默认本地路径 /app/repo');
     assert(yamlDefault.includes('githubApiConcurrency: 2'), '默认 GitHub API 并发数与 gitrieve 一致');
@@ -362,7 +365,7 @@ global.chrome = {
         syncOverdueGrace: '1h',
         syncStuckThreshold: '18h',
         cronMode: 'weekly',
-        server: { port: '9000', authEnabled: true }
+        server: { port: '9000', logRetentionMonths: 6, authEnabled: true }
       })
     }
   },
@@ -379,6 +382,7 @@ backgroundHandler({ action: 'processBookmarks' }, {}, (resp) => {
   assert(resp && resp.success, 'background processBookmarks 成功');
   assert(resp.data.yaml.includes('server:'), 'background YAML 包含 server:');
   assert(resp.data.yaml.includes('  port: "9000"'), 'background 读取 storage 中的 server.port');
+  assert(resp.data.yaml.includes('  logRetentionMonths: 6'), 'background 输出保存的日志保留月数');
   assert(resp.data.yaml.includes('  authEnabled: true'), 'background server.authEnabled 输出');
   assert(resp.data.yaml.includes('    storage:\n      - "archive-local"\n      - "second-local"'), 'background 仓库条目引用全部目的地');
   assert(resp.data.yaml.includes('  - name: "second-local"'), 'background storage 段包含第二个本地目的地');

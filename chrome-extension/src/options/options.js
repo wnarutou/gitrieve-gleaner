@@ -43,6 +43,7 @@ const elements = {
     serverHost: document.getElementById('server-host'),
     serverPort: document.getElementById('server-port'),
     serverDbPath: document.getElementById('server-dbpath'),
+    serverLogRetentionMonths: document.getElementById('server-log-retention-months'),
     serverAuthEnabled: document.getElementById('server-authenabled'),
     serverAuthToken: document.getElementById('server-authtoken'),
 
@@ -339,6 +340,7 @@ async function loadSettings() {
         elements.serverHost.value = settings.server.host;
         elements.serverPort.value = settings.server.port;
         elements.serverDbPath.value = settings.server.dbPath;
+        elements.serverLogRetentionMonths.value = settings.server.logRetentionMonths;
         elements.serverAuthEnabled.checked = settings.server.authEnabled;
         elements.serverAuthToken.value = settings.server.authToken;
 
@@ -383,6 +385,14 @@ async function saveSettings() {
             return;
         }
 
+        const serverSettings = SettingsValidation.parseServerSettings({
+            logRetentionMonths: elements.serverLogRetentionMonths.value
+        });
+        if (serverSettings.errors.length > 0) {
+            showStatusMessage('server 配置有误：' + serverSettings.errors.join('；'), true);
+            return;
+        }
+
         const cronSettings = {
             cronMode: elements.cronMode.value,
             cronExpression: elements.cronExpression.value,
@@ -417,6 +427,7 @@ async function saveSettings() {
                 host: elements.serverHost.value,
                 port: elements.serverPort.value,
                 dbPath: elements.serverDbPath.value,
+                ...serverSettings.value,
                 authEnabled: elements.serverAuthEnabled.checked,
                 authToken: elements.serverAuthToken.value
             }
@@ -469,6 +480,7 @@ function resetSettings() {
         elements.serverHost.value = DEFAULT_SETTINGS.server.host;
         elements.serverPort.value = DEFAULT_SETTINGS.server.port;
         elements.serverDbPath.value = DEFAULT_SETTINGS.server.dbPath;
+        elements.serverLogRetentionMonths.value = DEFAULT_SETTINGS.server.logRetentionMonths;
         elements.serverAuthEnabled.checked = DEFAULT_SETTINGS.server.authEnabled;
         elements.serverAuthToken.value = DEFAULT_SETTINGS.server.authToken;
 

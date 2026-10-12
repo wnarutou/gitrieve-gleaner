@@ -37,6 +37,7 @@ class ConfigGenerator {
         host: '0.0.0.0',
         port: '8080',
         dbPath: '/app/data/gitrieve.db',
+        logRetentionMonths: 2,
         authEnabled: false,
         authToken: ''
       }
@@ -84,6 +85,7 @@ class ConfigGenerator {
         host: '0.0.0.0',
         port: '8080',
         dbPath: '/app/data/gitrieve.db',
+        logRetentionMonths: 2,
         authEnabled: false,
         authToken: ''
       }
@@ -273,6 +275,7 @@ class ConfigGenerator {
     yamlLines.push('  host: ' + this.yamlQuote(server.host));
     yamlLines.push('  port: ' + JSON.stringify(String(server.port)));
     yamlLines.push('  dbPath: ' + this.yamlQuote(server.dbPath));
+    yamlLines.push('  logRetentionMonths: ' + server.logRetentionMonths);
     yamlLines.push('  authEnabled: ' + (server.authEnabled ? 'true' : 'false'));
     yamlLines.push('  authToken: ' + JSON.stringify(String(server.authToken)));
 

@@ -62,17 +62,19 @@
 - **重试基础延迟**（`retryBaseDelay`）：指数退避的基础延迟，默认 `5s`
 - **同步逾期宽限时间**（`syncOverdueGrace`）：超过计划执行时间后的逾期判定宽限，默认 `30m`
 - **同步卡住阈值**（`syncStuckThreshold`）：`pending` 或 `running` 状态的卡住判定阈值，默认 `24h`
+- **执行日志保留月数**（`server.logRetentionMonths`）：自动清理超过该期限的执行日志，默认 `2` 个月
 
 后三项时间配置使用 Go duration 格式，例如 `500ms`、`30m`、`12h`。
 
 ### 与新版 gitrieve 的兼容性
 
-已核对上游 [2026-09-28 的配置变更（fd4ef9c）](https://github.com/wnarutou/gitrieve/tree/fd4ef9ce7bacc98b16954ca59156adc71760b801)：
+已核对上游 [2026-10-12 的最新配置（247fd57）](https://github.com/wnarutou/gitrieve/tree/247fd57756b1fd5491583652c6b12b10b30f03f0)：
 
 - 上游已移除 S3，只接受 `type: file`。扩展支持多个本地文件目的地，每个仓库引用全部目的地。
 - 旧 S3 设置不会自动转成本地路径。导出时会提示打开选项页；将旧目的地切换为“本地文件”并填写路径，或删除该目的地，然后保存。打开选项页不会修改原设置，保存成功后才清理旧 S3 字段。
 - 路径指向 **gitrieve 的运行环境**。Docker 部署请使用已挂载的容器目录；扩展保留默认 `/app/repo` 和 `/app/data/gitrieve.db`，上游示例的相对仓库路径为 `./repo`。
 - GitHub 限流、错峰、重试、健康检查和 server 配置字段保持兼容；并发数的导出键继续使用上游现有拼写 `cocurrencyNum`。
+- `server.logRetentionMonths` 与上游默认值 `2` 保持一致；旧版扩展保存的设置缺少该字段时会自动补默认值。
 
 选项页与后台共用默认设置和配置生成器，YAML 会保护路径、名称和令牌中的特殊字符。
 

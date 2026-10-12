@@ -112,4 +112,22 @@ assert(invalidRuntime.errors.some(error => error.includes('重试基础延迟'))
 assert(invalidRuntime.errors.some(error => error.includes('同步逾期宽限时间')));
 assert(invalidRuntime.errors.some(error => error.includes('同步卡住阈值')));
 
+assert.strictEqual(
+  typeof SettingsValidation.parseServerSettings,
+  'function',
+  'server 配置校验函数可用'
+);
+
+const validServer = SettingsValidation.parseServerSettings({ logRetentionMonths: '6' });
+assert.deepStrictEqual(validServer, {
+  errors: [],
+  value: { logRetentionMonths: 6 }
+});
+
+for (const logRetentionMonths of ['0', '-1', '1.5', '1e100']) {
+  const invalidServer = SettingsValidation.parseServerSettings({ logRetentionMonths });
+  assert.strictEqual(invalidServer.errors.length, 1);
+  assert(invalidServer.errors[0].includes('日志保留月数'));
+}
+
 console.log('全局配置输入校验断言通过');
