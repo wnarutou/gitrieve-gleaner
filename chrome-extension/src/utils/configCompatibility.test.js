@@ -57,6 +57,20 @@ test('YAML preserves strings that look like YAML scalars or contain special char
   assert(yaml.includes('authToken: "line1\\nline2"'));
 });
 
+test('server log retention uses the upstream default and is exported as a nested server setting', () => {
+  const defaultConfig = ConfigGenerator.generateFullConfig(urls);
+  assert.equal(defaultConfig.server.logRetentionMonths, 2);
+  assert.match(ConfigGenerator.generateYAML(urls), /server:\n(?:.*\n)*?  logRetentionMonths: 2\n/);
+
+  const customConfig = ConfigGenerator.generateFullConfig(urls, {
+    server: { logRetentionMonths: 6 }
+  });
+  assert.equal(customConfig.server.logRetentionMonths, 6);
+  assert.equal(JSON.parse(ConfigGenerator.generateJSON(urls, {
+    server: { logRetentionMonths: 6 }
+  })).server.logRetentionMonths, 6);
+});
+
 function loadWorker(stored) {
   let handler;
   const context = vm.createContext({
@@ -93,7 +107,7 @@ test('real classic service worker reports incompatible saved storage instead of 
 
 test('classic service worker uses saved settings, fills partial server defaults and matches the utility export', async () => {
   const stored = {
-    server: { port: '9001' },
+    server: { port: '9001', logRetentionMonths: 6 },
     storageDestinations: [{ name: 'backup', type: 'file', path: '/data # archive' }],
     githubScheduleJitter: '0s', retryMaxCount: 8
   };
@@ -102,6 +116,7 @@ test('classic service worker uses saved settings, fills partial server defaults 
   const config = JSON.parse(result.data.json);
   assert.equal(config.server.port, '9001');
   assert.equal(config.server.dbPath, '/app/data/gitrieve.db');
+  assert.equal(config.server.logRetentionMonths, 6);
   assert.equal(config.retryMaxCount, 8);
   assert.equal(config.githubScheduleJitter, '0s');
   assert.deepEqual(config.storage, [{ name: 'backup', type: 'file', path: '/data # archive' }]);

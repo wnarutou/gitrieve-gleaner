@@ -231,6 +231,11 @@
                         <p class="help-text">SQLite 数据库路径，Docker 下建议指向挂载卷</p>
                     </div>
                     <div class="config-item">
+                        <label for="server-log-retention-months">执行日志保留月数 (logRetentionMonths)</label>
+                        <input type="number" id="server-log-retention-months" value="2" min="1" step="1">
+                        <p class="help-text">自动清理超过该月数的执行日志，默认保留 2 个月</p>
+                    </div>
+                    <div class="config-item">
                         <label>
                             <input type="checkbox" id="server-authenabled">
                             启用 API 认证 (authEnabled)

@@ -123,7 +123,21 @@ const SettingsValidation = (() => {
     };
   }
 
-  return { parseGitHubSettings, parseRuntimeSettings };
+  function parseServerSettings(input) {
+    const errors = [];
+    const logRetentionMonths = parsePositiveInteger(
+      input.logRetentionMonths,
+      '日志保留月数',
+      errors
+    );
+
+    return {
+      errors,
+      value: { logRetentionMonths }
+    };
+  }
+
+  return { parseGitHubSettings, parseRuntimeSettings, parseServerSettings };
 })();
 
 if (typeof module !== 'undefined' && module.exports) {

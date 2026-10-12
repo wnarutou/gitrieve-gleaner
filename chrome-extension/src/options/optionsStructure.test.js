@@ -32,6 +32,7 @@ parentDivOpeningTag('retry-max-count');
 parentDivOpeningTag('retry-base-delay');
 parentDivOpeningTag('sync-overdue-grace');
 parentDivOpeningTag('sync-stuck-threshold');
+parentDivOpeningTag('server-log-retention-months');
 
 assert(html.includes('<span id="extension-version"></span>'), '页脚应提供由运行时填充的版本元素');
 assert(
