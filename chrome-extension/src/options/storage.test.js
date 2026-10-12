@@ -33,7 +33,7 @@ function optionsPage(initial) {
   const stored = structuredClone(initial);
   const elements = new Map();
   const context = vm.createContext({
-    console: { log() {}, error() {} }, setTimeout() {},
+    console: { log() {}, error() {} }, setTimeout() {}, confirm: () => true,
     document: {
       getElementById(id) {
         if (!elements.has(id)) elements.set(id, new Element());
@@ -102,4 +102,23 @@ test('mixed old destinations remain visible and local paths survive loading and 
     { name: 'local', type: 'file', path: '/original' },
     { name: 'remote', type: 'file', path: '/second' }
   ]);
+});
+
+test('server log retention defaults old settings, saves valid values and blocks invalid values', async () => {
+  const page = optionsPage({ server: { port: '9001' } });
+  await page.context.loadSettings();
+
+  const retention = page.elements.get('server-log-retention-months');
+  assert.equal(retention.value, 2, 'old partial server settings receive the upstream default');
+
+  retention.value = '6';
+  await page.context.saveSettings();
+  assert.equal(page.stored.server.logRetentionMonths, 6);
+
+  retention.value = '0';
+  await page.context.saveSettings();
+  assert.equal(page.stored.server.logRetentionMonths, 6, 'invalid values must not reach storage');
+
+  page.context.resetSettings();
+  assert.equal(retention.value, 2, 'reset restores the upstream default');
 });

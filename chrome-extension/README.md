@@ -64,7 +64,7 @@
 - **同步卡住阈值**（`syncStuckThreshold`）：`pending` 或 `running` 状态的卡住判定阈值，默认 `24h`
 - **执行日志保留月数**（`server.logRetentionMonths`）：自动清理超过该期限的执行日志，默认 `2` 个月
 
-后三项时间配置使用 Go duration 格式，例如 `500ms`、`30m`、`12h`。
+`retryBaseDelay`、`syncOverdueGrace` 和 `syncStuckThreshold` 使用 Go duration 格式，例如 `500ms`、`30m`、`12h`；`logRetentionMonths` 使用正整数月数。
 
 ### 与新版 gitrieve 的兼容性
 
