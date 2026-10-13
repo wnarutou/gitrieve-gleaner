@@ -29,6 +29,9 @@ const elements = {
     downloadWiki: document.getElementById('download-wiki'),
     downloadDiscussion: document.getElementById('download-discussion'),
     githubToken: document.getElementById('github-token'),
+    githubAccounts: document.getElementById('github-accounts'),
+    addGithubAccountBtn: document.getElementById('add-github-account-btn'),
+    githubAccountConcurrency: document.getElementById('github-account-concurrency'),
     githubApiConcurrency: document.getElementById('github-api-concurrency'),
     githubMinRequestInterval: document.getElementById('github-min-request-interval'),
     githubLowRemainingThreshold: document.getElementById('github-low-remaining-threshold'),
@@ -64,6 +67,7 @@ const elements = {
 
 // 当前正在编辑的目的地列表（渲染期间的数据源）
 let destinationState = [];
+let accountState = [];
 
 // 旧扁平存储字段（一次性迁移用）
 const LEGACY_STORAGE_KEYS = ['storageBackend', 's3Endpoint', 's3Region', 's3Bucket', 's3AccessKeyID', 's3SecretAccessKey'];
@@ -101,6 +105,12 @@ function bindEvents() {
         destinationState = collectDestinations();
         destinationState.push({ name: '', type: 'file', path: '/app/repo' });
         renderDestinations();
+    });
+
+    elements.addGithubAccountBtn.addEventListener('click', () => {
+        accountState = collectGithubAccounts();
+        accountState.push({ name: '', token: '' });
+        renderGithubAccounts();
     });
 
     // 测试按钮
@@ -249,6 +259,47 @@ function buildTextField(id, labelText, value, help) {
     return item;
 }
 
+function renderGithubAccounts() {
+    const container = elements.githubAccounts;
+    container.innerHTML = '';
+    accountState = Array.isArray(accountState)
+        ? accountState.filter(account => account && typeof account === 'object')
+        : [];
+    accountState.forEach((account, index) => {
+        const card = document.createElement('div');
+        card.className = 'account-card';
+        const row = document.createElement('div');
+        row.className = 'dest-card-row';
+
+        const nameItem = buildTextField(`account-name-${index}`, '名称', account.name || '', '例如 alice');
+        row.appendChild(nameItem);
+
+        const tokenItem = buildTextField(`account-token-${index}`, 'Token', account.token || '', '该账号的 GitHub Token');
+        tokenItem.querySelector(`#account-token-${index}`).type = 'password';
+        row.appendChild(tokenItem);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'btn btn-secondary btn-small dest-remove-btn';
+        removeBtn.textContent = '删除';
+        removeBtn.addEventListener('click', () => {
+            accountState = collectGithubAccounts();
+            accountState.splice(index, 1);
+            renderGithubAccounts();
+        });
+        row.appendChild(removeBtn);
+        card.appendChild(row);
+        container.appendChild(card);
+    });
+}
+
+function collectGithubAccounts() {
+    return Array.from(elements.githubAccounts.querySelectorAll('.account-card')).map((card, index) => ({
+        name: card.querySelector(`#account-name-${index}`).value.trim(),
+        token: card.querySelector(`#account-token-${index}`).value.trim()
+    }));
+}
+
 /**
  * 从 DOM 卡片收集目的地列表
  */
@@ -326,6 +377,9 @@ async function loadSettings() {
         elements.downloadWiki.checked = settings.downloadWiki;
         elements.downloadDiscussion.checked = settings.downloadDiscussion;
         elements.githubToken.value = settings.githubToken;
+        accountState = settings.githubAccounts;
+        renderGithubAccounts();
+        elements.githubAccountConcurrency.value = settings.githubAccountConcurrency;
         elements.githubApiConcurrency.value = settings.githubApiConcurrency;
         elements.githubMinRequestInterval.value = settings.githubMinRequestInterval;
         elements.githubLowRemainingThreshold.value = settings.githubLowRemainingThreshold;
@@ -374,6 +428,15 @@ async function saveSettings() {
             return;
         }
 
+        const githubAccountSettings = SettingsValidation.parseGitHubAccountSettings({
+            githubAccounts: collectGithubAccounts(),
+            githubAccountConcurrency: elements.githubAccountConcurrency.value
+        });
+        if (githubAccountSettings.errors.length > 0) {
+            showStatusMessage('GitHub 账号池配置有误：' + githubAccountSettings.errors.join('；'), true);
+            return;
+        }
+
         const runtimeSettings = SettingsValidation.parseRuntimeSettings({
             retryMaxCount: elements.retryMaxCount.value,
             retryBaseDelay: elements.retryBaseDelay.value,
@@ -418,6 +481,7 @@ async function saveSettings() {
             downloadWiki: elements.downloadWiki.checked,
             downloadDiscussion: elements.downloadDiscussion.checked,
             githubToken: elements.githubToken.value,
+            ...githubAccountSettings.value,
             ...githubSettings.value,
             ...runtimeSettings.value,
             concurrencyNum: parseInt(elements.concurrencyNum.value, 10) || 6,
@@ -466,6 +530,9 @@ function resetSettings() {
         elements.downloadWiki.checked = DEFAULT_SETTINGS.downloadWiki;
         elements.downloadDiscussion.checked = DEFAULT_SETTINGS.downloadDiscussion;
         elements.githubToken.value = DEFAULT_SETTINGS.githubToken;
+        accountState = DEFAULT_SETTINGS.githubAccounts.map(account => ({ ...account }));
+        renderGithubAccounts();
+        elements.githubAccountConcurrency.value = DEFAULT_SETTINGS.githubAccountConcurrency;
         elements.githubApiConcurrency.value = DEFAULT_SETTINGS.githubApiConcurrency;
         elements.githubMinRequestInterval.value = DEFAULT_SETTINGS.githubMinRequestInterval;
         elements.githubLowRemainingThreshold.value = DEFAULT_SETTINGS.githubLowRemainingThreshold;

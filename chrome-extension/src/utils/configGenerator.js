@@ -22,6 +22,8 @@ class ConfigGenerator {
         }
       ],
       githubToken: 'your_github_token_here',
+      githubAccounts: [],
+      githubAccountConcurrency: 2,
       githubApiConcurrency: 2,
       githubMinRequestInterval: '200ms',
       githubLowRemainingThreshold: 100,
@@ -70,6 +72,8 @@ class ConfigGenerator {
       downloadWiki: true,
       downloadDiscussion: true,
       githubToken: 'your_github_token_here',
+      githubAccounts: [],
+      githubAccountConcurrency: 2,
       githubApiConcurrency: 2,
       githubMinRequestInterval: '200ms',
       githubLowRemainingThreshold: 100,
@@ -108,6 +112,29 @@ class ConfigGenerator {
       ? destinations.filter(d => d && typeof d.name === 'string' && d.name.trim() && d.type === 'file')
       : [];
     return valid.length > 0 ? valid : [{ name: 'localFile', type: 'file', path: '/app/repo' }];
+  }
+
+  static resolveGitHubAccounts(accounts) {
+    if (!Array.isArray(accounts)) {
+      throw new Error('GitHub 账号池必须是列表');
+    }
+    const names = new Set();
+    return accounts.map((account, index) => {
+      const name = String(account?.name || '').trim();
+      const token = String(account?.token || '').trim();
+      const label = `GitHub 账号 ${index + 1}`;
+      if (!name) {
+        throw new Error(`${label}：账号池名称必填`);
+      }
+      if (names.has(name)) {
+        throw new Error(`${label}：GitHub 账号池名称重复`);
+      }
+      if (!token) {
+        throw new Error(`${label}：账号池 Token 必填`);
+      }
+      names.add(name);
+      return { name, token };
+    });
   }
 
   // 只合并设置，不修改已保存数据；旧存储需要用户在选项页明确转换。
@@ -184,6 +211,7 @@ class ConfigGenerator {
   static generateFullConfig(githubUrls, settings = {}) {
     const merged = this.resolveSettings(settings);
     const destinations = this.resolveDestinations(merged.storageDestinations);
+    const githubAccounts = this.resolveGitHubAccounts(merged.githubAccounts);
     const cronExpressions = CronScheduleApi.generate(
       githubUrls.map(urlObj => urlObj.url),
       merged
@@ -195,6 +223,8 @@ class ConfigGenerator {
       ),
       storage: destinations.map(d => ({ name: d.name, type: 'file', path: d.path || '/app/repo' })),
       githubToken: merged.githubToken,
+      githubAccounts,
+      githubAccountConcurrency: merged.githubAccountConcurrency,
       githubApiConcurrency: merged.githubApiConcurrency,
       githubMinRequestInterval: merged.githubMinRequestInterval,
       githubLowRemainingThreshold: merged.githubLowRemainingThreshold,
@@ -257,6 +287,16 @@ class ConfigGenerator {
 
     // 添加全局配置
     yamlLines.push('githubToken: ' + this.yamlQuote(config.githubToken));
+    if (config.githubAccounts.length === 0) {
+      yamlLines.push('githubAccounts: []');
+    } else {
+      yamlLines.push('githubAccounts:');
+      config.githubAccounts.forEach(account => {
+        yamlLines.push('  - name: ' + this.yamlQuote(account.name));
+        yamlLines.push('    token: ' + this.yamlQuote(account.token));
+      });
+    }
+    yamlLines.push('githubAccountConcurrency: ' + config.githubAccountConcurrency);
     yamlLines.push('githubApiConcurrency: ' + config.githubApiConcurrency);
     yamlLines.push('githubMinRequestInterval: ' + config.githubMinRequestInterval);
     yamlLines.push('githubLowRemainingThreshold: ' + config.githubLowRemainingThreshold);

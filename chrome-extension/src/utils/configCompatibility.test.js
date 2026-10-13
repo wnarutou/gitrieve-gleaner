@@ -71,6 +71,40 @@ test('server log retention uses the upstream default and is exported as a nested
   })).server.logRetentionMonths, 6);
 });
 
+test('GitHub account pool defaults remain compatible and custom accounts reach YAML and JSON', () => {
+  const defaults = ConfigGenerator.generateFullConfig(urls);
+  assert.deepEqual(defaults.githubAccounts, []);
+  assert.equal(defaults.githubAccountConcurrency, 2);
+  assert.match(ConfigGenerator.generateYAML(urls), /githubAccounts: \[\]\ngithubAccountConcurrency: 2\n/);
+
+  const settings = {
+    githubAccounts: [
+      { name: 'alice', token: 'alice:secret' },
+      { name: 'bob', token: 'bob-secret' }
+    ],
+    githubAccountConcurrency: 3
+  };
+  const yaml = ConfigGenerator.generateYAML(urls, settings);
+  assert.match(yaml, /githubAccounts:\n  - name: alice\n    token: "alice:secret"\n  - name: bob\n    token: "bob-secret"\ngithubAccountConcurrency: 3\n/);
+  const json = JSON.parse(ConfigGenerator.generateJSON(urls, settings));
+  assert.deepEqual(json.githubAccounts, settings.githubAccounts);
+  assert.equal(json.githubAccountConcurrency, 3);
+});
+
+test('malformed GitHub account pools block export without exposing tokens', () => {
+  for (const githubAccounts of [
+    { name: 'not-a-list' },
+    [{ name: '', token: 'ghp_sensitive-secret' }],
+    [{ name: 'alice', token: '' }],
+    [{ name: 'alice', token: 'one' }, { name: 'alice', token: 'ghp_sensitive-secret' }]
+  ]) {
+    assert.throws(
+      () => ConfigGenerator.generateYAML(urls, { githubAccounts }),
+      error => /GitHub 账号池|GitHub 账号.*账号池/.test(error.message) && !error.message.includes('ghp_sensitive-secret')
+    );
+  }
+});
+
 function loadWorker(stored) {
   let handler;
   const context = vm.createContext({
@@ -108,6 +142,8 @@ test('real classic service worker reports incompatible saved storage instead of 
 test('classic service worker uses saved settings, fills partial server defaults and matches the utility export', async () => {
   const stored = {
     server: { port: '9001', logRetentionMonths: 6 },
+    githubAccounts: [{ name: 'alice', token: 'alice-secret' }],
+    githubAccountConcurrency: 4,
     storageDestinations: [{ name: 'backup', type: 'file', path: '/data # archive' }],
     githubScheduleJitter: '0s', retryMaxCount: 8
   };
@@ -117,6 +153,8 @@ test('classic service worker uses saved settings, fills partial server defaults 
   assert.equal(config.server.port, '9001');
   assert.equal(config.server.dbPath, '/app/data/gitrieve.db');
   assert.equal(config.server.logRetentionMonths, 6);
+  assert.deepEqual(config.githubAccounts, [{ name: 'alice', token: 'alice-secret' }]);
+  assert.equal(config.githubAccountConcurrency, 4);
   assert.equal(config.retryMaxCount, 8);
   assert.equal(config.githubScheduleJitter, '0s');
   assert.deepEqual(config.storage, [{ name: 'backup', type: 'file', path: '/data # archive' }]);

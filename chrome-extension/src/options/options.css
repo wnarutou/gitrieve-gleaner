@@ -321,7 +321,8 @@ footer {
 }
 
 /* 存储目的地卡片 */
-.dest-card {
+.dest-card,
+.account-card {
     padding: var(--spacing-md);
     margin-bottom: var(--spacing-md);
     border: 1px solid var(--border-color);
@@ -342,6 +343,7 @@ footer {
 }
 
 .dest-card-row .config-item input[type="text"],
+.dest-card-row .config-item input[type="password"],
 .dest-card-row .config-item select {
     width: 100%;
 }

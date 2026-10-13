@@ -122,3 +122,38 @@ test('server log retention defaults old settings, saves valid values and blocks 
   page.context.resetSettings();
   assert.equal(retention.value, 2, 'reset restores the upstream default');
 });
+
+test('GitHub account pool loads, saves, validates and resets without breaking legacy settings', async () => {
+  const page = optionsPage({
+    githubToken: 'legacy-secret',
+    githubAccounts: [
+      { name: 'alice', token: 'alice-secret' },
+      { name: 'bob', token: 'bob-secret' }
+    ],
+    githubAccountConcurrency: 3
+  });
+  await page.context.loadSettings();
+
+  const container = page.elements.get('github-accounts');
+  assert.equal(container.querySelectorAll('.account-card').length, 2);
+  assert.equal(container.querySelector('#account-name-0').value, 'alice');
+  assert.equal(container.querySelector('#account-token-1').value, 'bob-secret');
+  assert.equal(page.elements.get('github-account-concurrency').value, 3);
+
+  container.querySelector('#account-token-1').value = 'bob-replacement';
+  await page.context.saveSettings();
+  assert.deepEqual(page.stored.githubAccounts, [
+    { name: 'alice', token: 'alice-secret' },
+    { name: 'bob', token: 'bob-replacement' }
+  ]);
+  assert.equal(page.stored.githubAccountConcurrency, 3);
+  assert.equal(page.stored.githubToken, 'legacy-secret');
+
+  container.querySelector('#account-name-1').value = 'alice';
+  await page.context.saveSettings();
+  assert.equal(page.stored.githubAccounts[1].name, 'bob', 'duplicate names must not reach storage');
+
+  page.context.resetSettings();
+  assert.equal(container.querySelectorAll('.account-card').length, 0);
+  assert.equal(page.elements.get('github-account-concurrency').value, 2);
+});

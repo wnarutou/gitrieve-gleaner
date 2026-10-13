@@ -33,6 +33,9 @@ parentDivOpeningTag('retry-base-delay');
 parentDivOpeningTag('sync-overdue-grace');
 parentDivOpeningTag('sync-stuck-threshold');
 parentDivOpeningTag('server-log-retention-months');
+parentDivOpeningTag('github-account-concurrency');
+assert(html.includes('id="github-accounts"'), '选项页应提供 GitHub 账号池容器');
+assert(html.includes('id="add-github-account-btn"'), '选项页应提供添加 GitHub 账号按钮');
 
 assert(html.includes('<span id="extension-version"></span>'), '页脚应提供由运行时填充的版本元素');
 assert(

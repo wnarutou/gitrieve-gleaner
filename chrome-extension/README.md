@@ -63,22 +63,27 @@
 - **同步逾期宽限时间**（`syncOverdueGrace`）：超过计划执行时间后的逾期判定宽限，默认 `30m`
 - **同步卡住阈值**（`syncStuckThreshold`）：`pending` 或 `running` 状态的卡住判定阈值，默认 `24h`
 - **执行日志保留月数**（`server.logRetentionMonths`）：自动清理超过该期限的执行日志，默认 `2` 个月
+- **GitHub 账号池**（`githubAccounts`）：配置多个不同 GitHub 用户的名称和 Token；非空账号池优先于兼容字段 `githubToken`
+- **GitHub 单账号并发数**（`githubAccountConcurrency`）：账号池中每个账号的并发上限，默认 `2`
 
 `retryBaseDelay`、`syncOverdueGrace` 和 `syncStuckThreshold` 使用 Go duration 格式，例如 `500ms`、`30m`、`12h`；`logRetentionMonths` 使用正整数月数。
 
 ### 与新版 gitrieve 的兼容性
 
-已核对上游 [2026-10-12 的最新配置（247fd57）](https://github.com/wnarutou/gitrieve/tree/247fd57756b1fd5491583652c6b12b10b30f03f0)：
+已核对上游 [2026-10-14 的最新配置（e721b58）](https://github.com/wnarutou/gitrieve/tree/e721b584475feb1e647fc613892afe5306f4778c)：
 
 - 上游已移除 S3，只接受 `type: file`。扩展支持多个本地文件目的地，每个仓库引用全部目的地。
 - 旧 S3 设置不会自动转成本地路径。导出时会提示打开选项页；将旧目的地切换为“本地文件”并填写路径，或删除该目的地，然后保存。打开选项页不会修改原设置，保存成功后才清理旧 S3 字段。
 - 路径指向 **gitrieve 的运行环境**。Docker 部署请使用已挂载的容器目录；扩展保留默认 `/app/repo` 和 `/app/data/gitrieve.db`，上游示例的相对仓库路径为 `./repo`。
 - GitHub 限流、错峰、重试、健康检查和 server 配置字段保持兼容；并发数的导出键继续使用上游现有拼写 `cocurrencyNum`。
 - `server.logRetentionMonths` 与上游默认值 `2` 保持一致；旧版扩展保存的设置缺少该字段时会自动补默认值。
+- `githubAccounts` 默认为空列表；每项名称和 Token 必填且名称唯一。非空账号池优先于 `githubToken`，REST、GraphQL 和 GitHub HTTPS Git 操作由 gitrieve 在账号间协调和回退。
+- `githubAccountConcurrency` 默认值为 `2`，限制每个池账号的并发请求；`githubApiConcurrency` 仍是整个进程共享的并发上限。
+- 账号池 Token 会通过 `chrome.storage.sync` 同步到登录 Chrome 的 Google 账号，并以明文嵌入导出的配置，请妥善保管导出文件。
 
 选项页与后台共用默认设置和配置生成器，YAML 会保护路径、名称和令牌中的特殊字符。
 
-开发验证：在 `chrome-extension` 下运行 `npm test`，覆盖配置导出、旧设置转换、service worker 加载、URL 去重和 cron 分配。
+开发验证：在 `chrome-extension` 下运行 `npm test`，覆盖账号池与其他配置导出、旧设置转换、service worker 加载、URL 去重和 cron 分配。
 
 ## 权限说明
 
@@ -87,7 +92,7 @@
 - `bookmarks`：读取您的书签数据以提取GitHub仓库链接
 - `storage`：保存您的配置偏好设置
 
-**注意**：此扩展不会上传您的任何数据到外部服务器，所有处理都在本地浏览器中进行。
+**注意**：扩展不会把书签或配置发送到自己的外部服务器；使用 `chrome.storage.sync` 保存的设置（包括 Token）可能由 Chrome 同步到您登录的 Google 账号。
 
 ## 开发
 

@@ -130,4 +130,38 @@ for (const logRetentionMonths of ['0', '-1', '1.5', '1e100']) {
   assert(invalidServer.errors[0].includes('日志保留月数'));
 }
 
+assert.strictEqual(
+  typeof SettingsValidation.parseGitHubAccountSettings,
+  'function',
+  'GitHub 账号池配置校验函数可用'
+);
+
+const validAccounts = SettingsValidation.parseGitHubAccountSettings({
+  githubAccountConcurrency: '3',
+  githubAccounts: [
+    { name: ' alice ', token: ' alice-secret ' },
+    { name: 'bob', token: 'bob-secret' }
+  ]
+});
+assert.deepStrictEqual(validAccounts, {
+  errors: [],
+  value: {
+    githubAccountConcurrency: 3,
+    githubAccounts: [
+      { name: 'alice', token: 'alice-secret' },
+      { name: 'bob', token: 'bob-secret' }
+    ]
+  }
+});
+
+for (const input of [
+  { githubAccountConcurrency: '0', githubAccounts: [] },
+  { githubAccountConcurrency: '2', githubAccounts: { name: 'not-a-list' } },
+  { githubAccountConcurrency: '2', githubAccounts: [{ name: '', token: 'secret' }] },
+  { githubAccountConcurrency: '2', githubAccounts: [{ name: 'alice', token: ' ' }] },
+  { githubAccountConcurrency: '2', githubAccounts: [{ name: 'alice', token: 'one' }, { name: 'alice', token: 'two' }] }
+]) {
+  assert(SettingsValidation.parseGitHubAccountSettings(input).errors.length > 0);
+}
+
 console.log('全局配置输入校验断言通过');
