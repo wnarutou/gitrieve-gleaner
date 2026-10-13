@@ -22,7 +22,9 @@ class Element {
   addEventListener(name, callback) { this.events[name] = callback; }
   querySelectorAll(selector) {
     return this.children.flatMap(child => [
-      ...(selector === `#${child.id}` || selector === `.${child.className}` ? [child] : []),
+      ...(selector === `#${child.id}` || (
+        selector.startsWith('.') && String(child.className || '').split(/\s+/).includes(selector.slice(1))
+      ) ? [child] : []),
       ...child.querySelectorAll(selector)
     ]);
   }
@@ -156,4 +158,44 @@ test('GitHub account pool loads, saves, validates and resets without breaking le
   page.context.resetSettings();
   assert.equal(container.querySelectorAll('.account-card').length, 0);
   assert.equal(page.elements.get('github-account-concurrency').value, 2);
+});
+
+test('malformed saved GitHub account pools are preserved and block saving', async () => {
+  for (const githubAccounts of [
+    { name: 'not-a-list' },
+    [{ name: 'alice', token: 'alice-secret' }, 'invalid-entry']
+  ]) {
+    const initial = { githubAccounts };
+    const page = optionsPage(initial);
+    await page.context.loadSettings();
+    await page.context.saveSettings();
+    assert.deepEqual(page.stored, initial);
+  }
+});
+
+test('GitHub account controls add password inputs, preserve rows and remove with reindexing', async () => {
+  const page = optionsPage({});
+  await page.context.loadSettings();
+  page.context.bindEvents();
+
+  const container = page.elements.get('github-accounts');
+  page.elements.get('add-github-account-btn').events.click();
+  assert.equal(container.querySelectorAll('.account-card').length, 1);
+  assert.equal(container.querySelector('#account-token-0').type, 'password');
+  container.querySelector('#account-name-0').value = 'alice';
+  container.querySelector('#account-token-0').value = 'alice-secret';
+
+  page.elements.get('add-github-account-btn').events.click();
+  assert.equal(container.querySelectorAll('.account-card').length, 2);
+  assert.equal(container.querySelector('#account-name-0').value, 'alice');
+  container.querySelector('#account-name-1').value = 'bob';
+  container.querySelector('#account-token-1').value = 'bob-secret';
+
+  container.querySelectorAll('.account-card')[0].querySelector('.dest-remove-btn').events.click();
+  assert.equal(container.querySelectorAll('.account-card').length, 1);
+  assert.equal(container.querySelector('#account-name-0').value, 'bob');
+  assert.equal(container.querySelector('#account-token-0').type, 'password');
+
+  await page.context.saveSettings();
+  assert.deepEqual(page.stored.githubAccounts, [{ name: 'bob', token: 'bob-secret' }]);
 });

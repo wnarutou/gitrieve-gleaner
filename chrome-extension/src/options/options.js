@@ -68,6 +68,7 @@ const elements = {
 // 当前正在编辑的目的地列表（渲染期间的数据源）
 let destinationState = [];
 let accountState = [];
+let accountStructureError = '';
 
 // 旧扁平存储字段（一次性迁移用）
 const LEGACY_STORAGE_KEYS = ['storageBackend', 's3Endpoint', 's3Region', 's3Bucket', 's3AccessKeyID', 's3SecretAccessKey'];
@@ -108,6 +109,10 @@ function bindEvents() {
     });
 
     elements.addGithubAccountBtn.addEventListener('click', () => {
+        if (accountStructureError) {
+            showStatusMessage(accountStructureError + '；请先恢复默认设置以清空损坏的数据', true);
+            return;
+        }
         accountState = collectGithubAccounts();
         accountState.push({ name: '', token: '' });
         renderGithubAccounts();
@@ -262,9 +267,6 @@ function buildTextField(id, labelText, value, help) {
 function renderGithubAccounts() {
     const container = elements.githubAccounts;
     container.innerHTML = '';
-    accountState = Array.isArray(accountState)
-        ? accountState.filter(account => account && typeof account === 'object')
-        : [];
     accountState.forEach((account, index) => {
         const card = document.createElement('div');
         card.className = 'account-card';
@@ -377,8 +379,18 @@ async function loadSettings() {
         elements.downloadWiki.checked = settings.downloadWiki;
         elements.downloadDiscussion.checked = settings.downloadDiscussion;
         elements.githubToken.value = settings.githubToken;
-        accountState = settings.githubAccounts;
+        const hasValidAccountStructure = Array.isArray(settings.githubAccounts) && settings.githubAccounts.every(account =>
+            account && typeof account === 'object' && !Array.isArray(account) &&
+            typeof account.name === 'string' && typeof account.token === 'string'
+        );
+        accountStructureError = hasValidAccountStructure ? '' : '已保存的 GitHub 账号池结构无效，无法安全保存';
+        accountState = hasValidAccountStructure
+            ? settings.githubAccounts.map(account => ({ ...account }))
+            : [];
         renderGithubAccounts();
+        if (accountStructureError) {
+            showStatusMessage(accountStructureError + '；请恢复默认设置以清空损坏的数据', true);
+        }
         elements.githubAccountConcurrency.value = settings.githubAccountConcurrency;
         elements.githubApiConcurrency.value = settings.githubApiConcurrency;
         elements.githubMinRequestInterval.value = settings.githubMinRequestInterval;
@@ -410,6 +422,10 @@ async function loadSettings() {
  */
 async function saveSettings() {
     try {
+        if (accountStructureError) {
+            showStatusMessage(accountStructureError + '；请恢复默认设置以清空损坏的数据', true);
+            return;
+        }
         const destinations = collectDestinations();
         const validationErrors = validateDestinations(destinations);
         if (validationErrors.length > 0) {
@@ -530,6 +546,7 @@ function resetSettings() {
         elements.downloadWiki.checked = DEFAULT_SETTINGS.downloadWiki;
         elements.downloadDiscussion.checked = DEFAULT_SETTINGS.downloadDiscussion;
         elements.githubToken.value = DEFAULT_SETTINGS.githubToken;
+        accountStructureError = '';
         accountState = DEFAULT_SETTINGS.githubAccounts.map(account => ({ ...account }));
         renderGithubAccounts();
         elements.githubAccountConcurrency.value = DEFAULT_SETTINGS.githubAccountConcurrency;
