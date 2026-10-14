@@ -143,7 +143,20 @@
                     <div class="config-item">
                         <label for="github-token">GitHub Token</label>
                         <input type="password" id="github-token" value="your_github_token_here">
-                        <p class="help-text">用于访问私有仓库的GitHub个人访问令牌；此令牌通过 chrome.storage.sync 同步至 Google 账号，并会嵌入导出的配置中</p>
+                        <p class="help-text">未配置账号池时使用的兼容 Token；此令牌通过 chrome.storage.sync 同步至 Google 账号，并会嵌入导出的配置中</p>
+                    </div>
+
+                    <div class="config-item">
+                        <label>GitHub 账号池</label>
+                        <p class="help-text">非空账号池优先于上方兼容 Token。建议使用不同 GitHub 用户的 Token；所有名称和 Token 都会通过 chrome.storage.sync 同步并嵌入导出的配置中。</p>
+                        <div id="github-accounts"></div>
+                        <button type="button" id="add-github-account-btn" class="btn btn-secondary btn-small">＋ 添加 GitHub 账号</button>
+                    </div>
+
+                    <div class="config-item">
+                        <label for="github-account-concurrency">GitHub 单账号并发数</label>
+                        <input type="number" id="github-account-concurrency" value="2" min="1" step="1">
+                        <p class="help-text">账号池中每个账号允许的并发请求数，默认 2</p>
                     </div>
 
                     <div class="config-item">

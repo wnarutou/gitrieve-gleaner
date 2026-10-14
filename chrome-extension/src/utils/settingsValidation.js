@@ -137,7 +137,47 @@ const SettingsValidation = (() => {
     };
   }
 
-  return { parseGitHubSettings, parseRuntimeSettings, parseServerSettings };
+  function parseGitHubAccountSettings(input) {
+    const errors = [];
+    const githubAccountConcurrency = parsePositiveInteger(
+      input.githubAccountConcurrency,
+      'GitHub 单账号并发数',
+      errors
+    );
+    const accounts = Array.isArray(input.githubAccounts) ? input.githubAccounts : [];
+    if (!Array.isArray(input.githubAccounts)) {
+      errors.push('GitHub 账号池必须是列表');
+    }
+    const names = new Set();
+    const githubAccounts = accounts.map((account, index) => {
+      const name = String(account?.name || '').trim();
+      const token = String(account?.token || '').trim();
+      const label = `GitHub 账号 ${index + 1}`;
+      if (!name) {
+        errors.push(`${label}：名称必填`);
+      } else if (names.has(name)) {
+        errors.push(`${label}：名称「${name}」重复，名称需唯一`);
+      } else {
+        names.add(name);
+      }
+      if (!token) {
+        errors.push(`${label}：Token 必填`);
+      }
+      return { name, token };
+    });
+
+    return {
+      errors,
+      value: { githubAccounts, githubAccountConcurrency }
+    };
+  }
+
+  return {
+    parseGitHubSettings,
+    parseRuntimeSettings,
+    parseServerSettings,
+    parseGitHubAccountSettings
+  };
 })();
 
 if (typeof module !== 'undefined' && module.exports) {
