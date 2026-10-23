@@ -70,7 +70,7 @@
 
 ### 与新版 gitrieve 的兼容性
 
-已核对上游 [2026-10-14 的最新配置（e721b58）](https://github.com/wnarutou/gitrieve/tree/e721b584475feb1e647fc613892afe5306f4778c)：
+已核对上游 [2026-10-23 的最新配置（4b7338d）](https://github.com/wnarutou/gitrieve/tree/4b7338d01cdf0b462955ac539eddc0ae2f286bb3)：
 
 - 上游已移除 S3，只接受 `type: file`。扩展支持多个本地文件目的地，每个仓库引用全部目的地。
 - 旧 S3 设置不会自动转成本地路径。导出时会提示打开选项页；将旧目的地切换为“本地文件”并填写路径，或删除该目的地，然后保存。打开选项页不会修改原设置，保存成功后才清理旧 S3 字段。
@@ -79,7 +79,12 @@
 - `server.logRetentionMonths` 与上游默认值 `2` 保持一致；旧版扩展保存的设置缺少该字段时会自动补默认值。
 - `githubAccounts` 默认为空列表；每项名称和 Token 必填且名称唯一。非空账号池优先于 `githubToken`，REST、GraphQL 和 GitHub HTTPS Git 操作由 gitrieve 在账号间协调和回退。
 - `githubAccountConcurrency` 默认值为 `2`，限制每个池账号的并发请求；`githubApiConcurrency` 仍是整个进程共享的并发上限。
+- 上游双账号示例使用 `githubApiConcurrency: 4`、`cocurrencyNum: 12`，这些是示例取值。扩展继续默认输出 `2` 和 `6`，已有自定义设置不变；上游省略这两个字段时的程序默认值分别为 `2` 和 `3`。
 - 账号池 Token 会通过 `chrome.storage.sync` 同步到登录 Chrome 的 Google 账号，并以明文嵌入导出的配置，请妥善保管导出文件。
+
+10 月 14 日之后的上游更新未新增或删除上述配置字段。维护模式通过 gitrieve Web UI/API 操作，新增的 `stop_grace_period: 10m` 属于 Docker Compose 参数，不写入扩展生成的配置；Git 网络空闲超时和 Wiki/评论同步修复也无需新增配置项。容器升级流程见[上游维护说明](https://github.com/wnarutou/gitrieve/blob/4b7338d01cdf0b462955ac539eddc0ae2f286bb3/README_zh.md#升级前进入维护模式)。
+
+本次兼容验证使用上游 `ParseImport`、`ValidateImport` 和实际配置读取流程，覆盖默认配置、旧单 Token 设置及含特殊字符的多账号池设置；YAML 与 JSON 的解析结果一致。
 
 选项页与后台共用默认设置和配置生成器，YAML 会保护路径、名称和令牌中的特殊字符。
 
